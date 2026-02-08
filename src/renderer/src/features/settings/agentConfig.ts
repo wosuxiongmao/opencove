@@ -15,16 +15,15 @@ export type AgentCustomModelByProvider = {
   [provider in AgentProvider]: string
 }
 
-export interface ClaudeConnectionSettings {
-  baseUrl: string
-  apiKey: string
+export type AgentCustomModelOptionsByProvider = {
+  [provider in AgentProvider]: string[]
 }
 
 export interface AgentSettings {
   defaultProvider: AgentProvider
   customModelEnabledByProvider: AgentCustomModelEnabledByProvider
   customModelByProvider: AgentCustomModelByProvider
-  claudeConnection: ClaudeConnectionSettings
+  customModelOptionsByProvider: AgentCustomModelOptionsByProvider
 }
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
@@ -37,9 +36,9 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
     'claude-code': '',
     codex: '',
   },
-  claudeConnection: {
-    baseUrl: '',
-    apiKey: '',
+  customModelOptionsByProvider: {
+    'claude-code': [],
+    codex: [],
   },
 }
 
@@ -65,6 +64,24 @@ function normalizeModelEnabled(value: unknown): boolean | null {
   }
 
   return value
+}
+
+function normalizeModelOptions(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  const normalized: string[] = []
+  for (const item of value) {
+    const model = normalizeTextValue(item)
+    if (model.length === 0 || normalized.includes(model)) {
+      continue
+    }
+
+    normalized.push(model)
+  }
+
+  return normalized
 }
 
 export function resolveAgentModel(settings: AgentSettings, provider: AgentProvider): string | null {
@@ -114,20 +131,32 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     { ...DEFAULT_AGENT_SETTINGS.customModelByProvider },
   )
 
-  const claudeConnectionInput = isRecord(value.claudeConnection) ? value.claudeConnection : {}
+  const optionsInput = isRecord(value.customModelOptionsByProvider)
+    ? value.customModelOptionsByProvider
+    : {}
 
-  const legacyClaudeBaseUrl = normalizeTextValue(value.claudeApiBaseUrl)
-  const legacyClaudeApiKey = normalizeTextValue(value.claudeApiKey)
+  const customModelOptionsByProvider = AGENT_PROVIDERS.reduce<AgentCustomModelOptionsByProvider>(
+    (acc, provider) => {
+      const options = normalizeModelOptions(optionsInput[provider])
+      const selectedModel = customModelByProvider[provider]
 
-  const claudeConnection: ClaudeConnectionSettings = {
-    baseUrl: normalizeTextValue(claudeConnectionInput.baseUrl ?? legacyClaudeBaseUrl),
-    apiKey: normalizeTextValue(claudeConnectionInput.apiKey ?? legacyClaudeApiKey),
-  }
+      if (selectedModel.length > 0 && !options.includes(selectedModel)) {
+        options.unshift(selectedModel)
+      }
+
+      acc[provider] = options
+      return acc
+    },
+    {
+      'claude-code': [...DEFAULT_AGENT_SETTINGS.customModelOptionsByProvider['claude-code']],
+      codex: [...DEFAULT_AGENT_SETTINGS.customModelOptionsByProvider.codex],
+    },
+  )
 
   return {
     defaultProvider,
     customModelEnabledByProvider,
     customModelByProvider,
-    claudeConnection,
+    customModelOptionsByProvider,
   }
 }

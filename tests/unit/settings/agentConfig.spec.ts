@@ -11,7 +11,7 @@ describe('agent settings normalization', () => {
     expect(normalizeAgentSettings('invalid')).toEqual(DEFAULT_AGENT_SETTINGS)
   })
 
-  it('keeps valid provider, custom model, and claude connection fields', () => {
+  it('keeps valid provider, custom model, and model option fields', () => {
     const result = normalizeAgentSettings({
       defaultProvider: 'codex',
       customModelEnabledByProvider: {
@@ -19,27 +19,30 @@ describe('agent settings normalization', () => {
         codex: false,
       },
       customModelByProvider: {
-        'claude-code': 'claude-opus-4-1',
+        'claude-code': 'claude-opus-4-6',
         codex: 'gpt-5.2-codex',
       },
-      claudeConnection: {
-        baseUrl: 'https://proxy.example.com',
-        apiKey: 'abc-key',
+      customModelOptionsByProvider: {
+        'claude-code': ['claude-opus-4-6', 'claude-sonnet-4-5-20250929'],
+        codex: ['gpt-5.2-codex', 'gpt-5.2-codex'],
       },
     })
 
     expect(result.defaultProvider).toBe('codex')
     expect(result.customModelEnabledByProvider['claude-code']).toBe(true)
     expect(result.customModelEnabledByProvider.codex).toBe(false)
-    expect(result.customModelByProvider['claude-code']).toBe('claude-opus-4-1')
+    expect(result.customModelByProvider['claude-code']).toBe('claude-opus-4-6')
     expect(result.customModelByProvider.codex).toBe('gpt-5.2-codex')
-    expect(result.claudeConnection.baseUrl).toBe('https://proxy.example.com')
-    expect(result.claudeConnection.apiKey).toBe('abc-key')
-    expect(resolveAgentModel(result, 'claude-code')).toBe('claude-opus-4-1')
+    expect(result.customModelOptionsByProvider['claude-code']).toEqual([
+      'claude-opus-4-6',
+      'claude-sonnet-4-5-20250929',
+    ])
+    expect(result.customModelOptionsByProvider.codex).toEqual(['gpt-5.2-codex'])
+    expect(resolveAgentModel(result, 'claude-code')).toBe('claude-opus-4-6')
     expect(resolveAgentModel(result, 'codex')).toBeNull()
   })
 
-  it('trims custom model and uses default when empty', () => {
+  it('trims custom model and keeps default behavior when empty', () => {
     const result = normalizeAgentSettings({
       defaultProvider: 'claude-code',
       customModelEnabledByProvider: {
@@ -50,10 +53,16 @@ describe('agent settings normalization', () => {
         'claude-code': '   ',
         codex: '  gpt-5.2-codex  ',
       },
+      customModelOptionsByProvider: {
+        'claude-code': ['  claude-opus-4-6  ', ''],
+        codex: ['  gpt-5.2-codex  '],
+      },
     })
 
     expect(result.customModelByProvider['claude-code']).toBe('')
     expect(result.customModelByProvider.codex).toBe('gpt-5.2-codex')
+    expect(result.customModelOptionsByProvider['claude-code']).toEqual(['claude-opus-4-6'])
+    expect(result.customModelOptionsByProvider.codex).toEqual(['gpt-5.2-codex'])
     expect(resolveAgentModel(result, 'claude-code')).toBeNull()
     expect(resolveAgentModel(result, 'codex')).toBe('gpt-5.2-codex')
   })
@@ -62,25 +71,37 @@ describe('agent settings normalization', () => {
     const result = normalizeAgentSettings({
       defaultProvider: 'codex',
       modelByProvider: {
-        'claude-code': 'claude-sonnet-4-5',
+        'claude-code': 'claude-sonnet-4-5-20250929',
         codex: 'gpt-5.2-codex',
       },
     })
 
     expect(result.customModelEnabledByProvider['claude-code']).toBe(true)
     expect(result.customModelEnabledByProvider.codex).toBe(true)
-    expect(result.customModelByProvider['claude-code']).toBe('claude-sonnet-4-5')
+    expect(result.customModelByProvider['claude-code']).toBe('claude-sonnet-4-5-20250929')
     expect(result.customModelByProvider.codex).toBe('gpt-5.2-codex')
   })
 
-  it('migrates legacy claudeApiBaseUrl and claudeApiKey fields', () => {
+  it('ensures selected custom model appears in options list', () => {
     const result = normalizeAgentSettings({
       defaultProvider: 'claude-code',
-      claudeApiBaseUrl: ' https://legacy-proxy.example.com ',
-      claudeApiKey: ' legacy-key ',
+      customModelEnabledByProvider: {
+        'claude-code': true,
+        codex: false,
+      },
+      customModelByProvider: {
+        'claude-code': 'claude-custom-lab',
+        codex: '',
+      },
+      customModelOptionsByProvider: {
+        'claude-code': ['claude-opus-4-6'],
+        codex: [],
+      },
     })
 
-    expect(result.claudeConnection.baseUrl).toBe('https://legacy-proxy.example.com')
-    expect(result.claudeConnection.apiKey).toBe('legacy-key')
+    expect(result.customModelOptionsByProvider['claude-code']).toEqual([
+      'claude-custom-lab',
+      'claude-opus-4-6',
+    ])
   })
 })

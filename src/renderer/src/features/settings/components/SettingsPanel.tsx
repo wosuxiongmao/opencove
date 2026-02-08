@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import {
   AGENT_PROVIDER_LABEL,
   AGENT_PROVIDERS,
@@ -22,6 +23,13 @@ interface SettingsPanelProps {
   onClose: () => void
 }
 
+function createInitialInputState(): Record<AgentProvider, string> {
+  return {
+    'claude-code': '',
+    codex: '',
+  }
+}
+
 export function SettingsPanel({
   settings,
   modelCatalogByProvider,
@@ -29,6 +37,10 @@ export function SettingsPanel({
   onChange,
   onClose,
 }: SettingsPanelProps): JSX.Element {
+  const [addModelInputByProvider, setAddModelInputByProvider] = useState<
+    Record<AgentProvider, string>
+  >(() => createInitialInputState())
+
   const updateDefaultProvider = (provider: AgentProvider): void => {
     onChange({
       ...settings,
@@ -46,9 +58,13 @@ export function SettingsPanel({
     })
   }
 
-  const updateProviderCustomModel = (provider: AgentProvider, model: string): void => {
+  const selectProviderModel = (provider: AgentProvider, model: string): void => {
     onChange({
       ...settings,
+      customModelEnabledByProvider: {
+        ...settings.customModelEnabledByProvider,
+        [provider]: true,
+      },
       customModelByProvider: {
         ...settings.customModelByProvider,
         [provider]: model,
@@ -56,24 +72,66 @@ export function SettingsPanel({
     })
   }
 
-  const updateClaudeBaseUrl = (baseUrl: string): void => {
+  const removeCustomModelOption = (provider: AgentProvider, model: string): void => {
+    const currentOptions = settings.customModelOptionsByProvider[provider]
+    if (!currentOptions.includes(model)) {
+      return
+    }
+
+    const nextOptions = currentOptions.filter(option => option !== model)
+    const currentSelected = settings.customModelByProvider[provider]
+
     onChange({
       ...settings,
-      claudeConnection: {
-        ...settings.claudeConnection,
-        baseUrl,
+      customModelByProvider: {
+        ...settings.customModelByProvider,
+        [provider]: currentSelected === model ? '' : currentSelected,
+      },
+      customModelOptionsByProvider: {
+        ...settings.customModelOptionsByProvider,
+        [provider]: nextOptions,
       },
     })
   }
 
-  const updateClaudeApiKey = (apiKey: string): void => {
+  const updateAddModelInput = (provider: AgentProvider, value: string): void => {
+    setAddModelInputByProvider(prev => ({
+      ...prev,
+      [provider]: value,
+    }))
+  }
+
+  const addCustomModelOption = (provider: AgentProvider): void => {
+    const candidate = addModelInputByProvider[provider].trim()
+    if (candidate.length === 0) {
+      return
+    }
+
+    const existingOptions = settings.customModelOptionsByProvider[provider]
+    const nextOptions = existingOptions.includes(candidate)
+      ? existingOptions
+      : [...existingOptions, candidate]
+
     onChange({
       ...settings,
-      claudeConnection: {
-        ...settings.claudeConnection,
-        apiKey,
+      customModelEnabledByProvider: {
+        ...settings.customModelEnabledByProvider,
+        [provider]: true,
+      },
+      customModelByProvider: {
+        ...settings.customModelByProvider,
+        [provider]: candidate,
+      },
+      customModelOptionsByProvider: {
+        ...settings.customModelOptionsByProvider,
+        [provider]: nextOptions,
       },
     })
+
+    setAddModelInputByProvider(prev => ({
+      ...prev,
+      [provider]: '',
+    }))
   }
 
   const selectedModel =
@@ -128,7 +186,21 @@ export function SettingsPanel({
             const modelCatalog = modelCatalogByProvider[provider]
             const customEnabled = settings.customModelEnabledByProvider[provider]
             const customModel = settings.customModelByProvider[provider]
-            const modelListId = `settings-provider-model-list-${provider}`
+            const customOptions = settings.customModelOptionsByProvider[provider]
+
+            const allModels = [
+              ...new Set(
+                [...modelCatalog.models, ...customOptions, customModel]
+                  .map(model => model.trim())
+                  .filter(model => model.length > 0),
+              ),
+            ]
+
+            const addInputValue = addModelInputByProvider[provider]
+            const addInputPlaceholder =
+              provider === 'codex'
+                ? 'Example: gpt-5.2-codex'
+                : 'Example: claude-sonnet-4-5-20250929'
 
             return (
               <article className="settings-provider-card" key={provider}>
@@ -158,56 +230,76 @@ export function SettingsPanel({
                   <span>Use custom model (unchecked = follow CLI default)</span>
                 </label>
 
-                <input
-                  type="text"
-                  list={modelListId}
-                  data-testid={`settings-custom-model-input-${provider}`}
-                  value={customModel}
-                  disabled={!customEnabled}
-                  placeholder={
-                    provider === 'codex' ? 'Example: gpt-5.2-codex' : 'Example: claude-sonnet-4-5'
-                  }
-                  onChange={event => {
-                    updateProviderCustomModel(provider, event.target.value)
-                  }}
-                />
+                <div
+                  className="settings-provider-card__model-list"
+                  data-testid={`settings-model-list-${provider}`}
+                >
+                  {allModels.length === 0 ? (
+                    <p className="settings-provider-card__empty">No models yet. Add one below.</p>
+                  ) : (
+                    allModels.map(model => {
+                      const isCustomOption = customOptions.includes(model)
 
-                <datalist id={modelListId}>
-                  {modelCatalog.models.map(model => (
-                    <option value={model} key={model}>
-                      {model}
-                    </option>
-                  ))}
-                </datalist>
+                      return (
+                        <div className="settings-provider-card__model-item" key={model}>
+                          <label className="settings-provider-card__model-radio">
+                            <input
+                              type="radio"
+                              name={`settings-model-${provider}`}
+                              checked={customModel === model}
+                              onChange={() => {
+                                selectProviderModel(provider, model)
+                              }}
+                            />
+                            <span>{model}</span>
+                          </label>
 
-                {provider === 'claude-code' ? (
-                  <div className="settings-provider-card__credentials">
-                    <label htmlFor="settings-claude-base-url">Claude Base URL (Optional)</label>
-                    <input
-                      id="settings-claude-base-url"
-                      type="text"
-                      data-testid="settings-claude-base-url"
-                      value={settings.claudeConnection.baseUrl}
-                      placeholder="Default: https://api.anthropic.com"
-                      onChange={event => {
-                        updateClaudeBaseUrl(event.target.value)
-                      }}
-                    />
+                          {isCustomOption ? (
+                            <button
+                              type="button"
+                              className="settings-provider-card__model-remove"
+                              onClick={() => {
+                                removeCustomModelOption(provider, model)
+                              }}
+                            >
+                              Remove
+                            </button>
+                          ) : null}
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
 
-                    <label htmlFor="settings-claude-api-key">Claude API Key (Optional)</label>
-                    <input
-                      id="settings-claude-api-key"
-                      type="password"
-                      data-testid="settings-claude-api-key"
-                      value={settings.claudeConnection.apiKey}
-                      placeholder="Empty = use env / Claude config"
-                      autoComplete="off"
-                      onChange={event => {
-                        updateClaudeApiKey(event.target.value)
-                      }}
-                    />
-                  </div>
-                ) : null}
+                <div className="settings-provider-card__add-row">
+                  <input
+                    type="text"
+                    data-testid={`settings-custom-model-add-input-${provider}`}
+                    value={addInputValue}
+                    placeholder={addInputPlaceholder}
+                    onChange={event => {
+                      updateAddModelInput(provider, event.target.value)
+                    }}
+                    onKeyDown={event => {
+                      if (event.key !== 'Enter') {
+                        return
+                      }
+
+                      event.preventDefault()
+                      addCustomModelOption(provider)
+                    }}
+                  />
+                  <button
+                    type="button"
+                    data-testid={`settings-custom-model-add-button-${provider}`}
+                    disabled={addInputValue.trim().length === 0}
+                    onClick={() => {
+                      addCustomModelOption(provider)
+                    }}
+                  >
+                    Add
+                  </button>
+                </div>
 
                 <div className="settings-provider-card__meta">
                   <span>

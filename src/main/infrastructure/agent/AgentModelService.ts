@@ -1,41 +1,32 @@
 import { spawn } from 'node:child_process'
-import { readFile } from 'node:fs/promises'
-import { homedir } from 'node:os'
-import { join } from 'node:path'
 import type {
-  AgentConnectionConfigInput,
   AgentModelOption,
   AgentProviderId,
   ListAgentModelsResult,
 } from '../../../shared/types/api'
 
 const CODEX_APP_SERVER_TIMEOUT_MS = 8000
-const CLAUDE_MODELS_ENDPOINT = 'https://api.anthropic.com/v1/models'
-const CLAUDE_API_VERSION = '2023-06-01'
 
-function normalizeBaseUrl(value: string): string {
-  return value.replace(/\/+$/, '')
-}
-
-function normalizeOptionalValue(value: unknown): string | null {
-  if (typeof value !== 'string') {
-    return null
-  }
-
-  const normalized = value.trim()
-  return normalized.length > 0 ? normalized : null
-}
-
-function resolveEnvValue(keys: string[]): string | null {
-  for (const key of keys) {
-    const value = normalizeOptionalValue(process.env[key])
-    if (value) {
-      return value
-    }
-  }
-
-  return null
-}
+const CLAUDE_CODE_STATIC_MODELS: AgentModelOption[] = [
+  {
+    id: 'claude-opus-4-6',
+    displayName: 'Claude Opus 4.6',
+    description: 'Official Claude Code model',
+    isDefault: false,
+  },
+  {
+    id: 'claude-sonnet-4-5-20250929',
+    displayName: 'Claude Sonnet 4.5',
+    description: 'Official Claude Code default model',
+    isDefault: true,
+  },
+  {
+    id: 'claude-haiku-4-5-20251001',
+    displayName: 'Claude Haiku 4.5',
+    description: 'Official Claude Code fast model',
+    isDefault: false,
+  },
+]
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object'
@@ -68,31 +59,6 @@ function normalizeCodexModel(item: unknown): AgentModelOption | null {
   return {
     id: model,
     displayName: typeof item.displayName === 'string' ? item.displayName : model,
-    description: typeof item.description === 'string' ? item.description : '',
-    isDefault: item.isDefault === true,
-  }
-}
-
-function normalizeClaudeModel(item: unknown): AgentModelOption | null {
-  if (!isRecord(item)) {
-    return null
-  }
-
-  const id = typeof item.id === 'string' ? item.id : null
-  if (!id) {
-    return null
-  }
-
-  const displayName =
-    typeof item.display_name === 'string'
-      ? item.display_name
-      : typeof item.displayName === 'string'
-        ? item.displayName
-        : id
-
-  return {
-    id,
-    displayName,
     description: typeof item.description === 'string' ? item.description : '',
     isDefault: item.isDefault === true,
   }
@@ -252,121 +218,11 @@ async function listCodexModelsFromCli(): Promise<AgentModelOption[]> {
   })
 }
 
-async function readClaudeApiKeyFromConfig(): Promise<string | null> {
-  const configPath = join(homedir(), '.claude', 'config.json')
-
-  try {
-    const raw = await readFile(configPath, 'utf-8')
-    const parsed = JSON.parse(raw) as unknown
-
-    if (!isRecord(parsed)) {
-      return null
-    }
-
-    return normalizeOptionalValue(parsed.primaryApiKey)
-  } catch {
-    return null
-  }
+function listClaudeCodeStaticModels(): AgentModelOption[] {
+  return CLAUDE_CODE_STATIC_MODELS.map(model => ({ ...model }))
 }
 
-async function resolveClaudeApiKey(
-  connection?: AgentConnectionConfigInput,
-): Promise<string | null> {
-  const customApiKey = normalizeOptionalValue(connection?.apiKey)
-  if (customApiKey) {
-    return customApiKey
-  }
-
-  const envKey = resolveEnvValue([
-    'ANTHROPIC_API_KEY',
-    'CLAUDE_API_KEY',
-    'CLAUDE_CODE_API_KEY',
-    'CLAUDE_APIKEY',
-  ])
-
-  if (envKey) {
-    return envKey
-  }
-
-  return await readClaudeApiKeyFromConfig()
-}
-
-function toClaudeModelsEndpoint(baseUrl: string): string {
-  const normalized = normalizeBaseUrl(baseUrl)
-
-  if (normalized.endsWith('/v1/models')) {
-    return normalized
-  }
-
-  if (normalized.endsWith('/v1')) {
-    return `${normalized}/models`
-  }
-
-  return `${normalized}/v1/models`
-}
-
-function resolveClaudeModelsEndpoint(connection?: AgentConnectionConfigInput): string {
-  const customBaseUrl = normalizeOptionalValue(connection?.baseUrl)
-  if (customBaseUrl) {
-    return toClaudeModelsEndpoint(customBaseUrl)
-  }
-
-  const envBaseUrl = resolveEnvValue([
-    'ANTHROPIC_BASE_URL',
-    'CLAUDE_BASE_URL',
-    'CLAUDE_CODE_BASE_URL',
-    'ANTHROPIC_API_BASE_URL',
-  ])
-
-  if (!envBaseUrl) {
-    return CLAUDE_MODELS_ENDPOINT
-  }
-
-  return toClaudeModelsEndpoint(envBaseUrl)
-}
-
-async function listClaudeModelsFromApi(
-  connection?: AgentConnectionConfigInput,
-): Promise<AgentModelOption[]> {
-  const apiKey = await resolveClaudeApiKey(connection)
-  const endpoint = resolveClaudeModelsEndpoint(connection)
-
-  if (!apiKey) {
-    throw new Error(
-      'Claude API key not found (Settings > Claude API Key or ANTHROPIC_API_KEY / CLAUDE_API_KEY / CLAUDE_CODE_API_KEY / CLAUDE_APIKEY / ~/.claude/config.json)',
-    )
-  }
-
-  const response = await fetch(endpoint, {
-    method: 'GET',
-    headers: {
-      'x-api-key': apiKey,
-      authorization: `Bearer ${apiKey}`,
-      'anthropic-version': CLAUDE_API_VERSION,
-      'content-type': 'application/json',
-    },
-  })
-
-  if (!response.ok) {
-    const details = await response.text()
-    throw new Error(`Claude API request failed (${response.status}): ${details}`)
-  }
-
-  const payload = (await response.json()) as unknown
-
-  if (!isRecord(payload) || !Array.isArray(payload.data)) {
-    throw new Error('Invalid Claude models response payload')
-  }
-
-  return payload.data
-    .map(item => normalizeClaudeModel(item))
-    .filter((item): item is AgentModelOption => item !== null)
-}
-
-export async function listAgentModels(
-  provider: AgentProviderId,
-  connection?: AgentConnectionConfigInput,
-): Promise<ListAgentModelsResult> {
+export async function listAgentModels(provider: AgentProviderId): Promise<ListAgentModelsResult> {
   const fetchedAt = new Date().toISOString()
 
   if (provider === 'codex') {
@@ -390,22 +246,11 @@ export async function listAgentModels(
     }
   }
 
-  try {
-    const models = await listClaudeModelsFromApi(connection)
-    return {
-      provider,
-      source: 'claude-api',
-      fetchedAt,
-      models,
-      error: null,
-    }
-  } catch (error) {
-    return {
-      provider,
-      source: 'claude-api',
-      fetchedAt,
-      models: [],
-      error: toErrorMessage(error),
-    }
+  return {
+    provider,
+    source: 'claude-static',
+    fetchedAt,
+    models: listClaudeCodeStaticModels(),
+    error: null,
   }
 }

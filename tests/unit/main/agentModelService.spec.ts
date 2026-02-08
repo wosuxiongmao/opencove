@@ -1,128 +1,31 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { listAgentModels } from '../../../src/main/infrastructure/agent/AgentModelService'
 
 const ORIGINAL_ENV = { ...process.env }
-const DEFAULT_MOCK_DATA = {
-  data: [
-    {
-      id: 'claude-sonnet-4-5',
-      display_name: 'Claude Sonnet 4.5',
-    },
-  ],
-}
-
-function createMockFetch(): typeof fetch {
-  return vi.fn(async () => {
-    return {
-      ok: true,
-      json: async () => DEFAULT_MOCK_DATA,
-      text: async () => '',
-    } as Response
-  }) as unknown as typeof fetch
-}
 
 afterEach(() => {
   process.env = { ...ORIGINAL_ENV }
-  vi.restoreAllMocks()
 })
 
-describe('AgentModelService claude model list', () => {
-  it('uses explicit connection config from settings before env values', async () => {
-    process.env.ANTHROPIC_BASE_URL = 'https://env.example.com'
-    process.env.ANTHROPIC_API_KEY = 'env-key'
-
-    const fetchMock = createMockFetch()
-    globalThis.fetch = fetchMock
-
-    const result = await listAgentModels('claude-code', {
-      baseUrl: 'https://settings.example.com',
-      apiKey: 'settings-key',
-    })
-
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://settings.example.com/v1/models',
-      expect.objectContaining({
-        method: 'GET',
-        headers: expect.objectContaining({
-          'x-api-key': 'settings-key',
-          authorization: 'Bearer settings-key',
-          'anthropic-version': '2023-06-01',
-        }),
-      }),
-    )
-
-    expect(result.error).toBeNull()
-    expect(result.models[0]?.id).toBe('claude-sonnet-4-5')
-  })
-
-  it('uses ANTHROPIC_BASE_URL and ANTHROPIC_API_KEY when provided', async () => {
-    process.env.ANTHROPIC_BASE_URL = 'https://proxy.example.com/'
-    process.env.ANTHROPIC_API_KEY = 'proxy-key'
-    process.env.CLAUDE_CODE_BASE_URL = 'https://ignored.example.com'
-    process.env.CLAUDE_CODE_API_KEY = 'ignored-key'
-
-    const fetchMock = createMockFetch()
-    globalThis.fetch = fetchMock
-
-    const result = await listAgentModels('claude-code')
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://proxy.example.com/v1/models',
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          'x-api-key': 'proxy-key',
-          authorization: 'Bearer proxy-key',
-        }),
-      }),
-    )
-    expect(result.error).toBeNull()
-  })
-
-  it('falls back to CLAUDE_CODE_BASE_URL and CLAUDE_CODE_API_KEY', async () => {
-    delete process.env.ANTHROPIC_BASE_URL
+describe('AgentModelService', () => {
+  it('returns static Claude Code models without requiring api credentials', async () => {
     delete process.env.ANTHROPIC_API_KEY
-    process.env.CLAUDE_CODE_BASE_URL = 'https://gateway.internal/v1'
-    process.env.CLAUDE_CODE_API_KEY = 'gateway-key'
-
-    const fetchMock = createMockFetch()
-    globalThis.fetch = fetchMock
+    delete process.env.CLAUDE_API_KEY
+    delete process.env.CLAUDE_CODE_API_KEY
+    delete process.env.CLAUDE_APIKEY
 
     const result = await listAgentModels('claude-code')
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://gateway.internal/v1/models',
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          'x-api-key': 'gateway-key',
-          authorization: 'Bearer gateway-key',
-        }),
-      }),
-    )
+    expect(result.provider).toBe('claude-code')
+    expect(result.source).toBe('claude-static')
     expect(result.error).toBeNull()
-  })
-
-  it('uses default anthropic endpoint when base url is unset', async () => {
-    delete process.env.ANTHROPIC_BASE_URL
-    delete process.env.CLAUDE_BASE_URL
-    delete process.env.CLAUDE_CODE_BASE_URL
-    delete process.env.ANTHROPIC_API_BASE_URL
-    process.env.CLAUDE_API_KEY = 'plain-key'
-
-    const fetchMock = createMockFetch()
-    globalThis.fetch = fetchMock
-
-    const result = await listAgentModels('claude-code')
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.anthropic.com/v1/models',
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          'x-api-key': 'plain-key',
-          authorization: 'Bearer plain-key',
-        }),
-      }),
+    expect(result.models.map(model => model.id)).toEqual([
+      'claude-opus-4-6',
+      'claude-sonnet-4-5-20250929',
+      'claude-haiku-4-5-20251001',
+    ])
+    expect(result.models.find(model => model.id === 'claude-sonnet-4-5-20250929')?.isDefault).toBe(
+      true,
     )
-    expect(result.error).toBeNull()
   })
 })

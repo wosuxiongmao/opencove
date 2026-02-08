@@ -42,14 +42,8 @@ export interface TerminalExitEvent {
 
 export type AgentProviderId = 'claude-code' | 'codex'
 
-export interface AgentConnectionConfigInput {
-  baseUrl?: string
-  apiKey?: string
-}
-
 export interface ListAgentModelsInput {
   provider: AgentProviderId
-  connection?: AgentConnectionConfigInput
 }
 
 export interface AgentModelOption {
@@ -61,7 +55,7 @@ export interface AgentModelOption {
 
 export interface ListAgentModelsResult {
   provider: AgentProviderId
-  source: 'claude-api' | 'codex-cli'
+  source: 'claude-static' | 'codex-cli'
   fetchedAt: string
   models: AgentModelOption[]
   error: string | null

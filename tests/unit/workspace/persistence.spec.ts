@@ -75,9 +75,9 @@ describe('workspace persistence', () => {
         'claude-code': '',
         codex: 'gpt-5.2-codex',
       },
-      claudeConnection: {
-        baseUrl: 'https://proxy.example.com',
-        apiKey: 'test-key',
+      customModelOptionsByProvider: {
+        'claude-code': ['claude-opus-4-6'],
+        codex: ['gpt-5.2-codex'],
       },
     })
 
@@ -92,8 +92,10 @@ describe('workspace persistence', () => {
     expect(restored?.settings.defaultProvider).toBe('claude-code')
     expect(restored?.settings.customModelEnabledByProvider.codex).toBe(true)
     expect(restored?.settings.customModelByProvider.codex).toBe('gpt-5.2-codex')
-    expect(restored?.settings.claudeConnection.baseUrl).toBe('https://proxy.example.com')
-    expect(restored?.settings.claudeConnection.apiKey).toBe('test-key')
+    expect(restored?.settings.customModelOptionsByProvider['claude-code']).toEqual([
+      'claude-opus-4-6',
+    ])
+    expect(restored?.settings.customModelOptionsByProvider.codex).toEqual(['gpt-5.2-codex'])
   })
 
   it('falls back to default settings when persisted settings are missing', () => {
@@ -109,8 +111,8 @@ describe('workspace persistence', () => {
     expect(restored?.settings.defaultProvider).toBe('claude-code')
     expect(restored?.settings.customModelEnabledByProvider['claude-code']).toBe(false)
     expect(restored?.settings.customModelByProvider['claude-code']).toBe('')
-    expect(restored?.settings.claudeConnection.baseUrl).toBe('')
-    expect(restored?.settings.claudeConnection.apiKey).toBe('')
+    expect(restored?.settings.customModelOptionsByProvider['claude-code']).toEqual([])
+    expect(restored?.settings.customModelOptionsByProvider.codex).toEqual([])
   })
 
   it('returns null when stored json is invalid', () => {
