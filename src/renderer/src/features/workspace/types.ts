@@ -1,4 +1,5 @@
 import type { Node } from '@xyflow/react'
+import type { AgentSettings } from '../settings/agentConfig'
 
 export interface TerminalNodeData {
   sessionId: string
@@ -32,6 +33,7 @@ export interface PersistedTerminalNode {
 export interface PersistedAppState {
   activeWorkspaceId: string | null
   workspaces: PersistedWorkspaceState[]
+  settings: AgentSettings
 }
 
 export interface Size {

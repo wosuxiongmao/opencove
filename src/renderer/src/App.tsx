@@ -1,4 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
+import { SettingsPanel } from './features/settings/components/SettingsPanel'
+import {
+  AGENT_PROVIDER_LABEL,
+  DEFAULT_AGENT_SETTINGS,
+  type AgentSettings,
+} from './features/settings/agentConfig'
 import { WorkspaceCanvas } from './features/workspace/components/WorkspaceCanvas'
 import type { WorkspaceState } from './features/workspace/types'
 import {
@@ -11,6 +17,8 @@ import { toRuntimeNodes } from './features/workspace/utils/nodeTransform'
 function App(): JSX.Element {
   const [workspaces, setWorkspaces] = useState<WorkspaceState[]>([])
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null)
+  const [agentSettings, setAgentSettings] = useState<AgentSettings>(DEFAULT_AGENT_SETTINGS)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   useEffect(() => {
     const persisted = readPersistedState()
@@ -50,6 +58,7 @@ function App(): JSX.Element {
       )
 
       setWorkspaces(restoredWorkspaces)
+      setAgentSettings(persisted.settings)
 
       const hasActive = restoredWorkspaces.some(
         workspace => workspace.id === persisted.activeWorkspaceId,
@@ -63,13 +72,16 @@ function App(): JSX.Element {
   }, [])
 
   useEffect(() => {
-    writePersistedState(toPersistedState(workspaces, activeWorkspaceId))
-  }, [activeWorkspaceId, workspaces])
+    writePersistedState(toPersistedState(workspaces, activeWorkspaceId, agentSettings))
+  }, [activeWorkspaceId, agentSettings, workspaces])
 
   const activeWorkspace = useMemo(
     () => workspaces.find(workspace => workspace.id === activeWorkspaceId) ?? null,
     [activeWorkspaceId, workspaces],
   )
+
+  const activeProviderLabel = AGENT_PROVIDER_LABEL[agentSettings.defaultProvider]
+  const activeProviderModel = agentSettings.modelByProvider[agentSettings.defaultProvider]
 
   const handleAddWorkspace = async (): Promise<void> => {
     const selected = await window.coveApi.workspace.selectDirectory()
@@ -112,57 +124,89 @@ function App(): JSX.Element {
   }
 
   return (
-    <div className="app-shell">
-      <aside className="workspace-sidebar">
-        <div className="workspace-sidebar__header">
-          <h1>Workspaces</h1>
-          <button type="button" onClick={() => void handleAddWorkspace()}>
-            Add
-          </button>
-        </div>
-
-        <div className="workspace-sidebar__list">
-          {workspaces.length === 0 ? (
-            <p className="workspace-sidebar__empty">No workspace yet.</p>
-          ) : null}
-
-          {workspaces.map(workspace => {
-            const isActive = workspace.id === activeWorkspaceId
-            return (
-              <button
-                type="button"
-                key={workspace.id}
-                className={`workspace-item ${isActive ? 'workspace-item--active' : ''}`}
-                onClick={() => setActiveWorkspaceId(workspace.id)}
-                title={workspace.path}
-              >
-                <span className="workspace-item__name">{workspace.name}</span>
-                <span className="workspace-item__path">{workspace.path}</span>
-                <span className="workspace-item__meta">{workspace.nodes.length} terminals</span>
-              </button>
-            )
-          })}
-        </div>
-      </aside>
-
-      <main className="workspace-main">
-        {activeWorkspace ? (
-          <WorkspaceCanvas
-            workspacePath={activeWorkspace.path}
-            nodes={activeWorkspace.nodes}
-            onNodesChange={handleWorkspaceNodesChange}
-          />
-        ) : (
-          <div className="workspace-empty-state">
-            <h2>Add a workspace to start</h2>
-            <p>Each workspace has its own infinite canvas and terminals.</p>
+    <>
+      <div className="app-shell">
+        <aside className="workspace-sidebar">
+          <div className="workspace-sidebar__header">
+            <h1>Workspaces</h1>
             <button type="button" onClick={() => void handleAddWorkspace()}>
-              Add Workspace
+              Add
             </button>
           </div>
-        )}
-      </main>
-    </div>
+
+          <div className="workspace-sidebar__agent">
+            <span className="workspace-sidebar__agent-label">Default Agent</span>
+            <strong className="workspace-sidebar__agent-provider">{activeProviderLabel}</strong>
+            <span className="workspace-sidebar__agent-model">{activeProviderModel}</span>
+          </div>
+
+          <div className="workspace-sidebar__list">
+            {workspaces.length === 0 ? (
+              <p className="workspace-sidebar__empty">No workspace yet.</p>
+            ) : null}
+
+            {workspaces.map(workspace => {
+              const isActive = workspace.id === activeWorkspaceId
+              return (
+                <button
+                  type="button"
+                  key={workspace.id}
+                  className={`workspace-item ${isActive ? 'workspace-item--active' : ''}`}
+                  onClick={() => setActiveWorkspaceId(workspace.id)}
+                  title={workspace.path}
+                >
+                  <span className="workspace-item__name">{workspace.name}</span>
+                  <span className="workspace-item__path">{workspace.path}</span>
+                  <span className="workspace-item__meta">{workspace.nodes.length} terminals</span>
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="workspace-sidebar__footer">
+            <button
+              type="button"
+              className="workspace-sidebar__settings"
+              onClick={() => {
+                setIsSettingsOpen(true)
+              }}
+            >
+              Settings
+            </button>
+          </div>
+        </aside>
+
+        <main className="workspace-main">
+          {activeWorkspace ? (
+            <WorkspaceCanvas
+              workspacePath={activeWorkspace.path}
+              nodes={activeWorkspace.nodes}
+              onNodesChange={handleWorkspaceNodesChange}
+            />
+          ) : (
+            <div className="workspace-empty-state">
+              <h2>Add a workspace to start</h2>
+              <p>Each workspace has its own infinite canvas and terminals.</p>
+              <button type="button" onClick={() => void handleAddWorkspace()}>
+                Add Workspace
+              </button>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {isSettingsOpen ? (
+        <SettingsPanel
+          settings={agentSettings}
+          onChange={next => {
+            setAgentSettings(next)
+          }}
+          onClose={() => {
+            setIsSettingsOpen(false)
+          }}
+        />
+      ) : null}
+    </>
   )
 }
 

@@ -60,7 +60,6 @@ describe('workspace persistence', () => {
               width: 460,
               height: 300,
             },
-            dragHandle: '[data-node-drag-handle="true"]',
           },
         ],
       },
@@ -75,6 +74,22 @@ describe('workspace persistence', () => {
     expect(restored?.activeWorkspaceId).toBe('workspace-1')
     expect(restored?.workspaces).toHaveLength(1)
     expect(restored?.workspaces[0].nodes[0].title).toBe('terminal-1')
+    expect(restored?.settings.defaultProvider).toBe('claude-code')
+    expect(restored?.settings.modelByProvider.codex).toBe('gpt-5-codex')
+  })
+
+  it('falls back to default settings when persisted settings are missing', () => {
+    writeRawPersistedState(
+      JSON.stringify({
+        activeWorkspaceId: null,
+        workspaces: [],
+      }),
+    )
+
+    const restored = readPersistedState()
+    expect(restored).not.toBeNull()
+    expect(restored?.settings.defaultProvider).toBe('claude-code')
+    expect(restored?.settings.modelByProvider['claude-code']).toBe('claude-sonnet-4-5')
   })
 
   it('returns null when stored json is invalid', () => {

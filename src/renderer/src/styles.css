@@ -54,7 +54,9 @@ body {
 
 .workspace-sidebar__header button,
 .workspace-empty-state button,
-.workspace-context-menu button {
+.workspace-context-menu button,
+.workspace-sidebar__settings,
+.settings-panel button {
   border: 1px solid rgba(123, 157, 255, 0.5);
   background: rgba(58, 91, 182, 0.32);
   color: #e8f1ff;
@@ -66,8 +68,35 @@ body {
 
 .workspace-sidebar__header button:hover,
 .workspace-empty-state button:hover,
-.workspace-context-menu button:hover {
+.workspace-context-menu button:hover,
+.workspace-sidebar__settings:hover,
+.settings-panel button:hover {
   background: rgba(84, 123, 238, 0.45);
+}
+
+.workspace-sidebar__agent {
+  border: 1px solid rgba(94, 123, 189, 0.4);
+  background: rgba(19, 28, 50, 0.7);
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.workspace-sidebar__agent-label {
+  font-size: 11px;
+  color: #91a6d4;
+}
+
+.workspace-sidebar__agent-provider {
+  font-size: 13px;
+  color: #e9f1ff;
+}
+
+.workspace-sidebar__agent-model {
+  font-size: 12px;
+  color: #b7c8eb;
 }
 
 .workspace-sidebar__list {
@@ -122,6 +151,14 @@ body {
   color: #b2c3e5;
 }
 
+.workspace-sidebar__footer {
+  margin-top: auto;
+}
+
+.workspace-sidebar__settings {
+  width: 100%;
+}
+
 .workspace-main {
   position: relative;
   min-width: 0;
@@ -160,6 +197,83 @@ body {
   border-radius: 10px;
   background: rgba(9, 16, 30, 0.94);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.settings-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 10, 20, 0.45);
+  display: grid;
+  place-items: center;
+  z-index: 100;
+}
+
+.settings-panel {
+  width: min(560px, calc(100vw - 48px));
+  border: 1px solid rgba(123, 157, 255, 0.35);
+  border-radius: 14px;
+  padding: 18px;
+  background: rgba(11, 18, 34, 0.95);
+  backdrop-filter: blur(14px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.settings-panel__header h2 {
+  font-size: 20px;
+  color: #f0f6ff;
+}
+
+.settings-panel__close {
+  min-width: 34px;
+  padding: 4px 8px;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.settings-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-panel__section h3,
+.settings-panel__section label {
+  font-size: 13px;
+  color: #c6d7f7;
+}
+
+.settings-panel__section select,
+.settings-panel__row select {
+  border: 1px solid rgba(96, 130, 223, 0.55);
+  background: rgba(10, 18, 35, 0.85);
+  color: #eaf2ff;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.settings-panel__row {
+  display: grid;
+  grid-template-columns: 1fr minmax(0, 280px);
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-panel__row span {
+  font-size: 12px;
+  color: #b8caef;
+}
+
+.settings-panel__hint {
+  font-size: 12px;
+  color: #98afd9;
 }
 
 .terminal-node {

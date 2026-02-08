@@ -1,3 +1,8 @@
+import {
+  DEFAULT_AGENT_SETTINGS,
+  normalizeAgentSettings,
+  type AgentSettings,
+} from '../../settings/agentConfig'
 import type {
   PersistedAppState,
   PersistedWorkspaceState,
@@ -119,9 +124,12 @@ export function readPersistedState(): PersistedAppState | null {
       .map(item => ensurePersistedWorkspace(item))
       .filter((item): item is PersistedWorkspaceState => item !== null)
 
+    const settings = normalizeAgentSettings(record.settings)
+
     return {
       activeWorkspaceId,
       workspaces: normalizedWorkspaces,
+      settings,
     }
   } catch {
     return null
@@ -149,6 +157,7 @@ export function writeRawPersistedState(raw: string): void {
 export function toPersistedState(
   workspaces: WorkspaceState[],
   activeWorkspaceId: string | null,
+  settings: AgentSettings = DEFAULT_AGENT_SETTINGS,
 ): PersistedAppState {
   return {
     activeWorkspaceId,
@@ -164,5 +173,6 @@ export function toPersistedState(
         height: node.data.height,
       })),
     })),
+    settings,
   }
 }
