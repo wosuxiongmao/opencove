@@ -43,6 +43,34 @@ function normalizeListModelsPayload(payload: unknown): ListAgentModelsInput {
   }
 }
 
+function resolveAgentTestStub(
+  provider: AgentProviderId,
+  model: string | null,
+): {
+  command: string
+  args: string[]
+} | null {
+  if (process.env.NODE_ENV !== 'test') {
+    return null
+  }
+
+  if (process.platform === 'win32') {
+    const message = `[cove-test-agent] ${provider} ${model ?? 'default-model'}`
+    return {
+      command: 'powershell.exe',
+      args: ['-NoLogo', '-NoProfile', '-Command', `Write-Output "${message}"`],
+    }
+  }
+
+  const shell = process.env.SHELL ?? '/bin/zsh'
+  const message = `[cove-test-agent] ${provider} ${model ?? 'default-model'}`
+
+  return {
+    command: shell,
+    args: ['-lc', `printf '%s\n' "${message}"`],
+  }
+}
+
 function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput {
   if (!payload || typeof payload !== 'object') {
     throw new Error('Invalid payload for agent:launch')
@@ -169,12 +197,14 @@ export function registerIpcHandlers(): IpcRegistrationDisposable {
       model: normalized.model ?? null,
     })
 
+    const testStub = resolveAgentTestStub(normalized.provider, launchCommand.effectiveModel)
+
     const { sessionId, pty } = ptyManager.spawnSession({
       cwd: normalized.cwd,
       cols: normalized.cols ?? 80,
       rows: normalized.rows ?? 24,
-      command: launchCommand.command,
-      args: launchCommand.args,
+      command: testStub?.command ?? launchCommand.command,
+      args: testStub?.args ?? launchCommand.args,
     })
 
     wirePtySessionEvents(sessionId, pty)

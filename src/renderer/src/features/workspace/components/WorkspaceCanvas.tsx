@@ -27,6 +27,20 @@ interface WorkspaceCanvasProps {
   agentSettings: AgentSettings
 }
 
+interface ContextMenuState {
+  x: number
+  y: number
+  flowX: number
+  flowY: number
+}
+
+interface AgentLauncherState {
+  anchor: Point
+  prompt: string
+  isLaunching: boolean
+  error: string | null
+}
+
 const DEFAULT_SIZE: Size = {
   width: 460,
   height: 300,
@@ -55,12 +69,8 @@ function WorkspaceCanvasInner({
   onNodesChange,
   agentSettings,
 }: WorkspaceCanvasProps): JSX.Element {
-  const [contextMenu, setContextMenu] = useState<{
-    x: number
-    y: number
-    flowX: number
-    flowY: number
-  } | null>(null)
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+  const [agentLauncher, setAgentLauncher] = useState<AgentLauncherState | null>(null)
 
   const reactFlow = useReactFlow<TerminalNodeData>()
 
@@ -166,23 +176,12 @@ function WorkspaceCanvasInner({
   )
 
   const createNodeForSession = useCallback(
-    async (sessionId: string, title: string): Promise<boolean> => {
-      if (!contextMenu) {
-        await window.coveApi.pty.kill({ sessionId })
-        return false
-      }
-
-      const desiredPosition = {
-        x: contextMenu.flowX,
-        y: contextMenu.flowY,
-      }
-
-      const nonOverlappingPosition = findNearestFreePosition(desiredPosition, DEFAULT_SIZE, nodes)
+    async (sessionId: string, title: string, anchor: Point): Promise<boolean> => {
+      const nonOverlappingPosition = findNearestFreePosition(anchor, DEFAULT_SIZE, nodes)
       const canPlace = isPositionAvailable(nonOverlappingPosition, DEFAULT_SIZE, nodes)
 
       if (!canPlace) {
         await window.coveApi.pty.kill({ sessionId })
-        setContextMenu(null)
         window.alert('当前视图附近没有可用空位，请先移动或关闭部分终端窗口。')
         return false
       }
@@ -202,10 +201,9 @@ function WorkspaceCanvasInner({
       }
 
       onNodesChange([...nodes, nextNode])
-      setContextMenu(null)
       return true
     },
-    [contextMenu, nodes, onNodesChange],
+    [nodes, onNodesChange],
   )
 
   const createTerminalNode = useCallback(async () => {
@@ -213,35 +211,80 @@ function WorkspaceCanvasInner({
       return
     }
 
+    const anchor: Point = {
+      x: contextMenu.flowX,
+      y: contextMenu.flowY,
+    }
+
+    setContextMenu(null)
+
     const spawned = await window.coveApi.pty.spawn({
       cwd: workspacePath,
       cols: 80,
       rows: 24,
     })
 
-    await createNodeForSession(spawned.sessionId, `terminal-${nodes.length + 1}`)
+    await createNodeForSession(spawned.sessionId, `terminal-${nodes.length + 1}`, anchor)
   }, [contextMenu, createNodeForSession, nodes.length, workspacePath])
 
-  const launchDefaultAgentNode = useCallback(async () => {
+  const openAgentLauncher = useCallback(() => {
     if (!contextMenu) {
       return
     }
 
-    const provider = agentSettings.defaultProvider
-    const providerLabel = provider === 'codex' ? 'Codex' : 'Claude Code'
-    const prompt = window.prompt(`Run ${providerLabel}\n\n输入任务提示词：`, '')
+    const anchor: Point = {
+      x: contextMenu.flowX,
+      y: contextMenu.flowY,
+    }
 
-    if (prompt === null) {
-      setContextMenu(null)
+    setContextMenu(null)
+    setAgentLauncher({
+      anchor,
+      prompt: '',
+      isLaunching: false,
+      error: null,
+    })
+  }, [contextMenu])
+
+  const closeAgentLauncher = useCallback(() => {
+    setAgentLauncher(prev => {
+      if (!prev || prev.isLaunching) {
+        return prev
+      }
+
+      return null
+    })
+  }, [])
+
+  const launchDefaultAgentNode = useCallback(async () => {
+    if (!agentLauncher) {
       return
     }
 
-    const normalizedPrompt = prompt.trim()
+    const normalizedPrompt = agentLauncher.prompt.trim()
     if (normalizedPrompt.length === 0) {
-      window.alert('任务提示词不能为空。')
+      setAgentLauncher(prev =>
+        prev
+          ? {
+              ...prev,
+              error: '任务提示词不能为空。',
+            }
+          : prev,
+      )
       return
     }
 
+    setAgentLauncher(prev =>
+      prev
+        ? {
+            ...prev,
+            isLaunching: true,
+            error: null,
+          }
+        : prev,
+    )
+
+    const provider = agentSettings.defaultProvider
     const model = resolveAgentModel(agentSettings, provider)
 
     try {
@@ -257,12 +300,38 @@ function WorkspaceCanvasInner({
       const titleParts = [provider === 'codex' ? 'codex' : 'claude']
       titleParts.push(launched.effectiveModel ?? 'default-model')
 
-      await createNodeForSession(launched.sessionId, titleParts.join(' · '))
+      const created = await createNodeForSession(
+        launched.sessionId,
+        titleParts.join(' · '),
+        agentLauncher.anchor,
+      )
+
+      if (!created) {
+        setAgentLauncher(prev =>
+          prev
+            ? {
+                ...prev,
+                isLaunching: false,
+                error: '终端窗口无法放置，请先整理画布后重试。',
+              }
+            : prev,
+        )
+        return
+      }
+
+      setAgentLauncher(null)
     } catch (error) {
-      setContextMenu(null)
-      window.alert(`Agent 启动失败：${toErrorMessage(error)}`)
+      setAgentLauncher(prev =>
+        prev
+          ? {
+              ...prev,
+              isLaunching: false,
+              error: `Agent 启动失败：${toErrorMessage(error)}`,
+            }
+          : prev,
+      )
     }
-  }, [agentSettings, contextMenu, createNodeForSession, workspacePath])
+  }, [agentLauncher, agentSettings, createNodeForSession, workspacePath])
 
   const applyChanges = useCallback(
     (changes: NodeChange<TerminalNodeData>[]) => {
@@ -321,6 +390,10 @@ function WorkspaceCanvasInner({
     [nodes, normalizePosition, onNodesChange],
   )
 
+  const activeProviderLabel = agentSettings.defaultProvider === 'codex' ? 'Codex' : 'Claude Code'
+  const activeModelLabel =
+    resolveAgentModel(agentSettings, agentSettings.defaultProvider) ?? 'Default'
+
   return (
     <div className="workspace-canvas" onClick={() => setContextMenu(null)}>
       <ReactFlow<TerminalNodeData>
@@ -353,7 +426,13 @@ function WorkspaceCanvasInner({
       </ReactFlow>
 
       {contextMenu ? (
-        <div className="workspace-context-menu" style={{ top: contextMenu.y, left: contextMenu.x }}>
+        <div
+          className="workspace-context-menu"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onClick={event => {
+            event.stopPropagation()
+          }}
+        >
           <button
             type="button"
             data-testid="workspace-context-new-terminal"
@@ -367,11 +446,78 @@ function WorkspaceCanvasInner({
             type="button"
             data-testid="workspace-context-run-default-agent"
             onClick={() => {
-              void launchDefaultAgentNode()
+              openAgentLauncher()
             }}
           >
             Run Default Agent
           </button>
+        </div>
+      ) : null}
+
+      {agentLauncher ? (
+        <div
+          className="workspace-agent-launcher-backdrop"
+          onClick={() => {
+            closeAgentLauncher()
+          }}
+        >
+          <section
+            className="workspace-agent-launcher"
+            data-testid="workspace-agent-launcher"
+            onClick={event => {
+              event.stopPropagation()
+            }}
+          >
+            <h3>Run Default Agent</h3>
+            <p className="workspace-agent-launcher__meta">
+              Provider: {activeProviderLabel} · Model: {activeModelLabel}
+            </p>
+            <textarea
+              data-testid="workspace-agent-launch-prompt"
+              placeholder="输入任务提示词..."
+              value={agentLauncher.prompt}
+              disabled={agentLauncher.isLaunching}
+              onChange={event => {
+                const nextPrompt = event.target.value
+                setAgentLauncher(prev =>
+                  prev
+                    ? {
+                        ...prev,
+                        prompt: nextPrompt,
+                        error: null,
+                      }
+                    : prev,
+                )
+              }}
+            />
+
+            {agentLauncher.error ? (
+              <p className="workspace-agent-launcher__error">{agentLauncher.error}</p>
+            ) : null}
+
+            <div className="workspace-agent-launcher__actions">
+              <button
+                type="button"
+                data-testid="workspace-agent-launch-cancel"
+                disabled={agentLauncher.isLaunching}
+                onClick={() => {
+                  closeAgentLauncher()
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                data-testid="workspace-agent-launch-submit"
+                disabled={agentLauncher.isLaunching}
+                onClick={() => {
+                  void launchDefaultAgentNode()
+                }}
+              >
+                {agentLauncher.isLaunching ? 'Launching...' : 'Run'}
+              </button>
+            </div>
+          </section>
         </div>
       ) : null}
     </div>

@@ -56,7 +56,8 @@ body {
 .workspace-empty-state button,
 .workspace-context-menu button,
 .workspace-sidebar__settings,
-.settings-panel button {
+.settings-panel button,
+.workspace-agent-launcher button {
   border: 1px solid rgba(123, 157, 255, 0.5);
   background: rgba(58, 91, 182, 0.32);
   color: #e8f1ff;
@@ -70,7 +71,8 @@ body {
 .workspace-empty-state button:hover,
 .workspace-context-menu button:hover,
 .workspace-sidebar__settings:hover,
-.settings-panel button:hover {
+.settings-panel button:hover,
+.workspace-agent-launcher button:hover {
   background: rgba(84, 123, 238, 0.45);
 }
 
@@ -206,6 +208,60 @@ body {
 .workspace-context-menu button {
   width: 100%;
   text-align: left;
+}
+
+.workspace-agent-launcher-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(5, 10, 20, 0.5);
+  display: grid;
+  place-items: center;
+}
+
+.workspace-agent-launcher {
+  width: min(560px, calc(100vw - 48px));
+  border: 1px solid rgba(123, 157, 255, 0.42);
+  border-radius: 12px;
+  background: rgba(11, 18, 34, 0.96);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.45);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.workspace-agent-launcher h3 {
+  font-size: 18px;
+  color: #eff5ff;
+}
+
+.workspace-agent-launcher__meta {
+  font-size: 12px;
+  color: #9eb6e4;
+}
+
+.workspace-agent-launcher textarea {
+  min-height: 120px;
+  resize: vertical;
+  border: 1px solid rgba(96, 130, 223, 0.55);
+  background: rgba(10, 18, 35, 0.85);
+  color: #eaf2ff;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 13px;
+}
+
+.workspace-agent-launcher__error {
+  font-size: 12px;
+  color: #ffb2b2;
+}
+
+.workspace-agent-launcher__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .settings-backdrop {

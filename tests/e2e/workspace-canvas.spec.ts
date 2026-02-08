@@ -230,4 +230,38 @@ test.describe('Workspace Canvas Interactions', () => {
       await electronApp.close()
     }
   })
+
+  test('runs default agent and creates terminal node', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(window, [])
+
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+
+      await pane.click({
+        button: 'right',
+        position: { x: 320, y: 220 },
+      })
+
+      const runButton = window.locator('[data-testid="workspace-context-run-default-agent"]')
+      await expect(runButton).toBeVisible()
+      await runButton.click()
+
+      const launcher = window.locator('[data-testid="workspace-agent-launcher"]')
+      await expect(launcher).toBeVisible()
+
+      const promptInput = window.locator('[data-testid="workspace-agent-launch-prompt"]')
+      await promptInput.fill('Generate implementation plan for API error handling')
+
+      const submitButton = window.locator('[data-testid="workspace-agent-launch-submit"]')
+      await submitButton.click()
+
+      await expect(window.locator('.terminal-node')).toHaveCount(1)
+      await expect(window.locator('.terminal-node__title').first()).toContainText('default-model')
+    } finally {
+      await electronApp.close()
+    }
+  })
 })
