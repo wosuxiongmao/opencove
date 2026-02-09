@@ -190,6 +190,22 @@ function normalizeSuggestTaskTitlePayload(payload: unknown): SuggestTaskTitleInp
 export function registerIpcHandlers(): IpcRegistrationDisposable {
   const ptyManager = new PtyManager()
   const terminalProbeBufferBySession = new Map<string, string>()
+  const isTerminalAttachedBySession = new Map<string, boolean>()
+
+  const registerSessionProbeState = (sessionId: string): void => {
+    isTerminalAttachedBySession.set(sessionId, false)
+    terminalProbeBufferBySession.set(sessionId, '')
+  }
+
+  const markSessionAttached = (sessionId: string): void => {
+    isTerminalAttachedBySession.set(sessionId, true)
+    terminalProbeBufferBySession.delete(sessionId)
+  }
+
+  const clearSessionProbeState = (sessionId: string): void => {
+    isTerminalAttachedBySession.delete(sessionId)
+    terminalProbeBufferBySession.delete(sessionId)
+  }
 
   const resolveTerminalProbeReplies = (sessionId: string, outputChunk: string): void => {
     if (outputChunk.includes('\u001b[6n')) {
@@ -215,9 +231,11 @@ export function registerIpcHandlers(): IpcRegistrationDisposable {
 
   const wirePtySessionEvents = (sessionId: string, pty: IPty): void => {
     pty.onData(data => {
-      const probeBuffer = `${terminalProbeBufferBySession.get(sessionId) ?? ''}${data}`
-      resolveTerminalProbeReplies(sessionId, probeBuffer)
-      terminalProbeBufferBySession.set(sessionId, probeBuffer.slice(-32))
+      if (!isTerminalAttachedBySession.get(sessionId)) {
+        const probeBuffer = `${terminalProbeBufferBySession.get(sessionId) ?? ''}${data}`
+        resolveTerminalProbeReplies(sessionId, probeBuffer)
+        terminalProbeBufferBySession.set(sessionId, probeBuffer.slice(-32))
+      }
 
       ptyManager.appendSnapshotData(sessionId, data)
 
@@ -228,7 +246,7 @@ export function registerIpcHandlers(): IpcRegistrationDisposable {
     })
 
     pty.onExit(exit => {
-      terminalProbeBufferBySession.delete(sessionId)
+      clearSessionProbeState(sessionId)
       ptyManager.delete(sessionId)
       webContents.getAllWebContents().forEach(content => {
         const eventPayload: TerminalExitEvent = {
@@ -282,21 +300,24 @@ export function registerIpcHandlers(): IpcRegistrationDisposable {
 
   ipcMain.handle(IPC_CHANNELS.ptySpawn, async (_event, payload: SpawnTerminalInput) => {
     const { sessionId, pty } = ptyManager.spawnSession(payload)
+    registerSessionProbeState(sessionId)
     wirePtySessionEvents(sessionId, pty)
 
     return { sessionId }
   })
 
   ipcMain.handle(IPC_CHANNELS.ptyWrite, async (_event, payload: WriteTerminalInput) => {
+    markSessionAttached(payload.sessionId)
     ptyManager.write(payload.sessionId, payload.data)
   })
 
   ipcMain.handle(IPC_CHANNELS.ptyResize, async (_event, payload: ResizeTerminalInput) => {
+    markSessionAttached(payload.sessionId)
     ptyManager.resize(payload.sessionId, payload.cols, payload.rows)
   })
 
   ipcMain.handle(IPC_CHANNELS.ptyKill, async (_event, payload: KillTerminalInput) => {
-    terminalProbeBufferBySession.delete(payload.sessionId)
+    clearSessionProbeState(payload.sessionId)
     ptyManager.kill(payload.sessionId)
   })
 
@@ -343,6 +364,7 @@ export function registerIpcHandlers(): IpcRegistrationDisposable {
       args: testStub?.args ?? launchCommand.args,
     })
 
+    registerSessionProbeState(sessionId)
     wirePtySessionEvents(sessionId, pty)
 
     let resumeSessionId = launchCommand.resumeSessionId
