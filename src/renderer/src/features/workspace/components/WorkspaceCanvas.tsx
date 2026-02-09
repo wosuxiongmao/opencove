@@ -852,11 +852,6 @@ function WorkspaceCanvasInner({
       return
     }
 
-    const viewport = reactFlow.getViewport()
-    if (Math.abs(viewport.zoom - 1) < 0.01) {
-      return
-    }
-
     const targetNode = nodesRef.current.find(node => node.id === nodeId)
     if (!targetNode || targetNode.data.kind === 'task') {
       return

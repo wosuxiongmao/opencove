@@ -25,6 +25,37 @@ interface SettingsPanelProps {
   onClose: () => void
 }
 
+type SettingsSectionId = 'general' | 'canvas' | 'task-title' | 'model-override'
+
+interface SettingsSection {
+  id: SettingsSectionId
+  title: string
+  anchorId: string
+}
+
+const SETTINGS_SECTIONS: SettingsSection[] = [
+  {
+    id: 'general',
+    title: 'General',
+    anchorId: 'settings-section-general',
+  },
+  {
+    id: 'canvas',
+    title: 'Canvas',
+    anchorId: 'settings-section-canvas',
+  },
+  {
+    id: 'task-title',
+    title: 'Task Title',
+    anchorId: 'settings-section-task-title',
+  },
+  {
+    id: 'model-override',
+    title: 'Model Override',
+    anchorId: 'settings-section-model-override',
+  },
+]
+
 function createInitialInputState(): Record<AgentProvider, string> {
   return {
     'claude-code': '',
@@ -42,6 +73,7 @@ export function SettingsPanel({
   const [addModelInputByProvider, setAddModelInputByProvider] = useState<
     Record<AgentProvider, string>
   >(() => createInitialInputState())
+  const [activeSectionId, setActiveSectionId] = useState<SettingsSectionId>('general')
 
   const updateDefaultProvider = (provider: AgentProvider): void => {
     onChange({
@@ -164,6 +196,12 @@ export function SettingsPanel({
     return resolveTaskTitleProvider(settings)
   }, [settings])
 
+  const scrollToSection = (section: SettingsSection): void => {
+    setActiveSectionId(section.id)
+    const element = document.getElementById(section.anchorId)
+    element?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <div
       className="settings-backdrop"
@@ -190,223 +228,251 @@ export function SettingsPanel({
           </button>
         </div>
 
-        <div className="settings-panel__section">
-          <label htmlFor="settings-default-provider">Default Agent</label>
-          <select
-            id="settings-default-provider"
-            value={settings.defaultProvider}
-            onChange={event => {
-              updateDefaultProvider(event.target.value as AgentProvider)
-            }}
-          >
-            {AGENT_PROVIDERS.map(provider => (
-              <option value={provider} key={provider}>
-                {AGENT_PROVIDER_LABEL[provider]}
-              </option>
-            ))}
-          </select>
-        </div>
+        <div className="settings-panel__layout">
+          <aside className="settings-panel__sidebar" aria-label="Settings Sections">
+            {SETTINGS_SECTIONS.map(section => {
+              const isActive = section.id === activeSectionId
 
-        <div className="settings-panel__section">
-          <h3>Canvas Interaction</h3>
-          <label className="settings-provider-card__toggle">
-            <input
-              id="settings-normalize-zoom-on-terminal-click"
-              data-testid="settings-normalize-zoom-on-terminal-click"
-              type="checkbox"
-              checked={settings.normalizeZoomOnTerminalClick}
-              onChange={event => {
-                updateNormalizeZoomOnTerminalClick(event.target.checked)
-              }}
-            />
-            <span>Click terminal auto-zooms canvas to 100%</span>
-          </label>
-        </div>
-
-        <div className="settings-panel__section">
-          <h3>Task Title Generation</h3>
-          <div className="settings-panel__row">
-            <span>CLI Provider</span>
-            <select
-              id="settings-task-title-provider"
-              data-testid="settings-task-title-provider"
-              value={settings.taskTitleProvider}
-              onChange={event => {
-                updateTaskTitleProvider(event.target.value as TaskTitleProvider)
-              }}
-            >
-              <option value="default">
-                Follow Default Agent ({AGENT_PROVIDER_LABEL[settings.defaultProvider]})
-              </option>
-              {AGENT_PROVIDERS.map(provider => (
-                <option value={provider} key={provider}>
-                  {AGENT_PROVIDER_LABEL[provider]}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="settings-panel__row">
-            <span>Model (optional)</span>
-            <input
-              id="settings-task-title-model"
-              data-testid="settings-task-title-model"
-              value={settings.taskTitleModel}
-              placeholder="Leave empty to follow CLI default model"
-              onChange={event => {
-                updateTaskTitleModel(event.target.value)
-              }}
-            />
-          </div>
-
-          <p className="settings-panel__hint">
-            Effective provider: {AGENT_PROVIDER_LABEL[effectiveTaskTitleProvider]}
-          </p>
-        </div>
-
-        <div className="settings-panel__section">
-          <h3>Model Override</h3>
-          {AGENT_PROVIDERS.map(provider => {
-            const modelCatalog = modelCatalogByProvider[provider]
-            const customEnabled = settings.customModelEnabledByProvider[provider]
-            const customModel = settings.customModelByProvider[provider]
-            const customOptions = settings.customModelOptionsByProvider[provider]
-
-            const allModels = [
-              ...new Set(
-                [...modelCatalog.models, ...customOptions, customModel]
-                  .map(model => model.trim())
-                  .filter(model => model.length > 0),
-              ),
-            ]
-
-            const addInputValue = addModelInputByProvider[provider]
-            const addInputPlaceholder =
-              provider === 'codex'
-                ? 'Example: gpt-5.2-codex'
-                : 'Example: claude-sonnet-4-5-20250929'
-
-            return (
-              <article className="settings-provider-card" key={provider}>
-                <div className="settings-provider-card__header">
-                  <strong>{AGENT_PROVIDER_LABEL[provider]}</strong>
-                  <button
-                    type="button"
-                    className="settings-provider-card__refresh"
-                    disabled={modelCatalog.isLoading}
-                    onClick={() => {
-                      onRefreshProviderModels(provider)
-                    }}
-                  >
-                    {modelCatalog.isLoading ? 'Refreshing...' : 'Refresh Models'}
-                  </button>
-                </div>
-
-                <label className="settings-provider-card__toggle">
-                  <input
-                    type="checkbox"
-                    data-testid={`settings-custom-model-enabled-${provider}`}
-                    checked={customEnabled}
-                    onChange={event => {
-                      updateProviderCustomModelEnabled(provider, event.target.checked)
-                    }}
-                  />
-                  <span>Use custom model (unchecked = follow CLI default)</span>
-                </label>
-
-                <div
-                  className="settings-provider-card__model-list"
-                  data-testid={`settings-model-list-${provider}`}
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  className={`settings-panel__nav-button${isActive ? ' settings-panel__nav-button--active' : ''}`}
+                  data-testid={`settings-section-nav-${section.id}`}
+                  onClick={() => {
+                    scrollToSection(section)
+                  }}
                 >
-                  {allModels.length === 0 ? (
-                    <p className="settings-provider-card__empty">No models yet. Add one below.</p>
-                  ) : (
-                    allModels.map(model => {
-                      const isCustomOption = customOptions.includes(model)
+                  {section.title}
+                </button>
+              )
+            })}
+          </aside>
 
-                      return (
-                        <div className="settings-provider-card__model-item" key={model}>
-                          <label className="settings-provider-card__model-radio">
-                            <input
-                              type="radio"
-                              name={`settings-model-${provider}`}
-                              checked={customModel === model}
-                              onChange={() => {
-                                selectProviderModel(provider, model)
-                              }}
-                            />
-                            <span>{model}</span>
-                          </label>
+          <div className="settings-panel__content">
+            <div className="settings-panel__section" id="settings-section-general">
+              <label htmlFor="settings-default-provider">Default Agent</label>
+              <select
+                id="settings-default-provider"
+                value={settings.defaultProvider}
+                onChange={event => {
+                  updateDefaultProvider(event.target.value as AgentProvider)
+                }}
+              >
+                {AGENT_PROVIDERS.map(provider => (
+                  <option value={provider} key={provider}>
+                    {AGENT_PROVIDER_LABEL[provider]}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-                          {isCustomOption ? (
-                            <button
-                              type="button"
-                              className="settings-provider-card__model-remove"
-                              onClick={() => {
-                                removeCustomModelOption(provider, model)
-                              }}
-                            >
-                              Remove
-                            </button>
-                          ) : null}
-                        </div>
-                      )
-                    })
-                  )}
-                </div>
+            <div className="settings-panel__section" id="settings-section-canvas">
+              <h3>Canvas Interaction</h3>
+              <label className="settings-provider-card__toggle">
+                <input
+                  id="settings-normalize-zoom-on-terminal-click"
+                  data-testid="settings-normalize-zoom-on-terminal-click"
+                  type="checkbox"
+                  checked={settings.normalizeZoomOnTerminalClick}
+                  onChange={event => {
+                    updateNormalizeZoomOnTerminalClick(event.target.checked)
+                  }}
+                />
+                <span>Click terminal auto-zooms canvas to 100%</span>
+              </label>
+            </div>
 
-                <div className="settings-provider-card__add-row">
-                  <input
-                    type="text"
-                    data-testid={`settings-custom-model-add-input-${provider}`}
-                    value={addInputValue}
-                    placeholder={addInputPlaceholder}
-                    onChange={event => {
-                      updateAddModelInput(provider, event.target.value)
-                    }}
-                    onKeyDown={event => {
-                      if (event.key !== 'Enter') {
-                        return
-                      }
+            <div className="settings-panel__section" id="settings-section-task-title">
+              <h3>Task Title Generation</h3>
+              <div className="settings-panel__row">
+                <span>CLI Provider</span>
+                <select
+                  id="settings-task-title-provider"
+                  data-testid="settings-task-title-provider"
+                  value={settings.taskTitleProvider}
+                  onChange={event => {
+                    updateTaskTitleProvider(event.target.value as TaskTitleProvider)
+                  }}
+                >
+                  <option value="default">
+                    Follow Default Agent ({AGENT_PROVIDER_LABEL[settings.defaultProvider]})
+                  </option>
+                  {AGENT_PROVIDERS.map(provider => (
+                    <option value={provider} key={provider}>
+                      {AGENT_PROVIDER_LABEL[provider]}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                      event.preventDefault()
-                      addCustomModelOption(provider)
-                    }}
-                  />
-                  <button
-                    type="button"
-                    data-testid={`settings-custom-model-add-button-${provider}`}
-                    disabled={addInputValue.trim().length === 0}
-                    onClick={() => {
-                      addCustomModelOption(provider)
-                    }}
-                  >
-                    Add
-                  </button>
-                </div>
+              <div className="settings-panel__row">
+                <span>Model (optional)</span>
+                <input
+                  id="settings-task-title-model"
+                  data-testid="settings-task-title-model"
+                  value={settings.taskTitleModel}
+                  placeholder="Leave empty to follow CLI default model"
+                  onChange={event => {
+                    updateTaskTitleModel(event.target.value)
+                  }}
+                />
+              </div>
 
-                <div className="settings-provider-card__meta">
-                  <span>
-                    Source: {modelCatalog.source ?? 'N/A'} · {modelCatalog.models.length} models
-                  </span>
-                  {modelCatalog.error ? (
-                    <span className="settings-provider-card__error">
-                      Error: {modelCatalog.error}
-                    </span>
-                  ) : modelCatalog.fetchedAt ? (
-                    <span>Updated: {new Date(modelCatalog.fetchedAt).toLocaleTimeString()}</span>
-                  ) : (
-                    <span>Waiting for first fetch...</span>
-                  )}
-                </div>
-              </article>
-            )
-          })}
+              <p className="settings-panel__hint">
+                Effective provider: {AGENT_PROVIDER_LABEL[effectiveTaskTitleProvider]}
+              </p>
+            </div>
+
+            <div className="settings-panel__section" id="settings-section-model-override">
+              <h3>Model Override</h3>
+              {AGENT_PROVIDERS.map(provider => {
+                const modelCatalog = modelCatalogByProvider[provider]
+                const customEnabled = settings.customModelEnabledByProvider[provider]
+                const customModel = settings.customModelByProvider[provider]
+                const customOptions = settings.customModelOptionsByProvider[provider]
+
+                const allModels = [
+                  ...new Set(
+                    [...modelCatalog.models, ...customOptions, customModel]
+                      .map(model => model.trim())
+                      .filter(model => model.length > 0),
+                  ),
+                ]
+
+                const addInputValue = addModelInputByProvider[provider]
+                const addInputPlaceholder =
+                  provider === 'codex'
+                    ? 'Example: gpt-5.2-codex'
+                    : 'Example: claude-sonnet-4-5-20250929'
+
+                return (
+                  <article className="settings-provider-card" key={provider}>
+                    <div className="settings-provider-card__header">
+                      <strong>{AGENT_PROVIDER_LABEL[provider]}</strong>
+                      <button
+                        type="button"
+                        className="settings-provider-card__refresh"
+                        disabled={modelCatalog.isLoading}
+                        onClick={() => {
+                          onRefreshProviderModels(provider)
+                        }}
+                      >
+                        {modelCatalog.isLoading ? 'Refreshing...' : 'Refresh Models'}
+                      </button>
+                    </div>
+
+                    <label className="settings-provider-card__toggle">
+                      <input
+                        type="checkbox"
+                        data-testid={`settings-custom-model-enabled-${provider}`}
+                        checked={customEnabled}
+                        onChange={event => {
+                          updateProviderCustomModelEnabled(provider, event.target.checked)
+                        }}
+                      />
+                      <span>Use custom model (unchecked = follow CLI default)</span>
+                    </label>
+
+                    <div
+                      className="settings-provider-card__model-list"
+                      data-testid={`settings-model-list-${provider}`}
+                    >
+                      {allModels.length === 0 ? (
+                        <p className="settings-provider-card__empty">
+                          No models yet. Add one below.
+                        </p>
+                      ) : (
+                        allModels.map(model => {
+                          const isCustomOption = customOptions.includes(model)
+
+                          return (
+                            <div className="settings-provider-card__model-item" key={model}>
+                              <label className="settings-provider-card__model-radio">
+                                <input
+                                  type="radio"
+                                  name={`settings-model-${provider}`}
+                                  checked={customModel === model}
+                                  onChange={() => {
+                                    selectProviderModel(provider, model)
+                                  }}
+                                />
+                                <span>{model}</span>
+                              </label>
+
+                              {isCustomOption ? (
+                                <button
+                                  type="button"
+                                  className="settings-provider-card__model-remove"
+                                  onClick={() => {
+                                    removeCustomModelOption(provider, model)
+                                  }}
+                                >
+                                  Remove
+                                </button>
+                              ) : null}
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+
+                    <div className="settings-provider-card__add-row">
+                      <input
+                        type="text"
+                        data-testid={`settings-custom-model-add-input-${provider}`}
+                        value={addInputValue}
+                        placeholder={addInputPlaceholder}
+                        onChange={event => {
+                          updateAddModelInput(provider, event.target.value)
+                        }}
+                        onKeyDown={event => {
+                          if (event.key !== 'Enter') {
+                            return
+                          }
+
+                          event.preventDefault()
+                          addCustomModelOption(provider)
+                        }}
+                      />
+                      <button
+                        type="button"
+                        data-testid={`settings-custom-model-add-button-${provider}`}
+                        disabled={addInputValue.trim().length === 0}
+                        onClick={() => {
+                          addCustomModelOption(provider)
+                        }}
+                      >
+                        Add
+                      </button>
+                    </div>
+
+                    <div className="settings-provider-card__meta">
+                      <span>
+                        Source: {modelCatalog.source ?? 'N/A'} · {modelCatalog.models.length} models
+                      </span>
+                      {modelCatalog.error ? (
+                        <span className="settings-provider-card__error">
+                          Error: {modelCatalog.error}
+                        </span>
+                      ) : modelCatalog.fetchedAt ? (
+                        <span>
+                          Updated: {new Date(modelCatalog.fetchedAt).toLocaleTimeString()}
+                        </span>
+                      ) : (
+                        <span>Waiting for first fetch...</span>
+                      )}
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+
+            <p className="settings-panel__hint">
+              Current default: {AGENT_PROVIDER_LABEL[settings.defaultProvider]} · {selectedModel}
+            </p>
+          </div>
         </div>
-
-        <p className="settings-panel__hint">
-          Current default: {AGENT_PROVIDER_LABEL[settings.defaultProvider]} · {selectedModel}
-        </p>
       </section>
     </div>
   )

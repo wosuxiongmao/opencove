@@ -274,14 +274,56 @@ body {
 }
 
 .settings-panel {
-  width: min(620px, calc(100vw - 48px));
+  width: min(760px, calc(100vw - 48px));
   max-height: calc(100vh - 48px);
-  overflow: auto;
+  overflow: hidden;
   border: 1px solid rgba(123, 157, 255, 0.35);
   border-radius: 14px;
   padding: 18px;
   background: rgba(11, 18, 34, 0.95);
   backdrop-filter: blur(14px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-panel__layout {
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: 148px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.settings-panel__sidebar {
+  min-height: 0;
+  border-right: 1px solid rgba(98, 127, 208, 0.34);
+  padding-right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-panel__nav-button {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  font-size: 12px;
+  padding: 7px 10px;
+  border-color: rgba(93, 122, 204, 0.5);
+  background: rgba(30, 45, 79, 0.28);
+}
+
+.settings-panel__nav-button--active {
+  border-color: rgba(132, 166, 255, 0.85);
+  background: rgba(83, 123, 238, 0.45);
+  color: #f0f6ff;
+}
+
+.settings-panel__content {
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -926,4 +968,29 @@ body {
 
 .task-node__run-agent:hover {
   background: rgba(84, 123, 238, 0.45);
+}
+
+@media (max-width: 860px) {
+  .settings-panel {
+    width: min(680px, calc(100vw - 24px));
+    max-height: calc(100vh - 24px);
+    padding: 14px;
+  }
+
+  .settings-panel__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-panel__sidebar {
+    border-right: none;
+    border-bottom: 1px solid rgba(98, 127, 208, 0.34);
+    padding-right: 0;
+    padding-bottom: 8px;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .settings-panel__nav-button {
+    width: auto;
+  }
 }

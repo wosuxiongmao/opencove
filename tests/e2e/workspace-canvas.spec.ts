@@ -403,15 +403,22 @@ test.describe('Workspace Canvas Interactions', () => {
     }
   })
 
-  test('normalizes canvas zoom when terminal is clicked', async () => {
+  test('normalizes canvas zoom and centers clicked terminal', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
       await clearAndSeedWorkspace(window, [
         {
-          id: 'node-zoom-normalize',
-          title: 'terminal-zoom-normalize',
+          id: 'node-zoom-1',
+          title: 'terminal-zoom-1',
           position: { x: 120, y: 120 },
+          width: 460,
+          height: 300,
+        },
+        {
+          id: 'node-zoom-2',
+          title: 'terminal-zoom-2',
+          position: { x: 820, y: 520 },
           width: 460,
           height: 300,
         },
@@ -445,9 +452,9 @@ test.describe('Workspace Canvas Interactions', () => {
       const zoomBefore = await readZoom()
       expect(zoomBefore).toBeGreaterThan(1.01)
 
-      const terminal = window.locator('.terminal-node').first()
-      await expect(terminal).toBeVisible()
-      await terminal.locator('.xterm').click()
+      const firstTerminal = window.locator('.terminal-node').filter({ hasText: 'terminal-zoom-1' })
+      await expect(firstTerminal).toBeVisible()
+      await firstTerminal.locator('.xterm').click()
 
       await expect
         .poll(async () => {
@@ -455,20 +462,45 @@ test.describe('Workspace Canvas Interactions', () => {
         })
         .toBeCloseTo(1, 2)
 
-      const canvasBox = await window.locator('.workspace-canvas .react-flow').boundingBox()
-      const terminalBox = await terminal.boundingBox()
+      const secondTerminal = window.locator('.terminal-node').filter({ hasText: 'terminal-zoom-2' })
+      await expect(secondTerminal).toBeVisible()
+      await secondTerminal.locator('.xterm').click()
 
-      if (!canvasBox || !terminalBox) {
-        throw new Error('failed to measure canvas or terminal bounds')
+      const readCenterDelta = async (): Promise<{ dx: number; dy: number }> => {
+        const canvasBox = await window.locator('.workspace-canvas .react-flow').boundingBox()
+        const terminalBox = await secondTerminal.boundingBox()
+
+        if (!canvasBox || !terminalBox) {
+          return {
+            dx: Number.POSITIVE_INFINITY,
+            dy: Number.POSITIVE_INFINITY,
+          }
+        }
+
+        const canvasCenterX = canvasBox.x + canvasBox.width / 2
+        const canvasCenterY = canvasBox.y + canvasBox.height / 2
+        const terminalCenterX = terminalBox.x + terminalBox.width / 2
+        const terminalCenterY = terminalBox.y + terminalBox.height / 2
+
+        return {
+          dx: Math.abs(canvasCenterX - terminalCenterX),
+          dy: Math.abs(canvasCenterY - terminalCenterY),
+        }
       }
 
-      const canvasCenterX = canvasBox.x + canvasBox.width / 2
-      const canvasCenterY = canvasBox.y + canvasBox.height / 2
-      const terminalCenterX = terminalBox.x + terminalBox.width / 2
-      const terminalCenterY = terminalBox.y + terminalBox.height / 2
+      await expect
+        .poll(async () => {
+          const delta = await readCenterDelta()
+          return delta.dx
+        })
+        .toBeLessThan(140)
 
-      expect(Math.abs(canvasCenterX - terminalCenterX)).toBeLessThan(120)
-      expect(Math.abs(canvasCenterY - terminalCenterY)).toBeLessThan(120)
+      await expect
+        .poll(async () => {
+          const delta = await readCenterDelta()
+          return delta.dy
+        })
+        .toBeLessThan(140)
     } finally {
       await electronApp.close()
     }
