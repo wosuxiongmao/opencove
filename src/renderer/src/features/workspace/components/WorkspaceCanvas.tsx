@@ -12,6 +12,7 @@ import {
   type NodeChange,
   type NodePositionChange,
 } from '@xyflow/react'
+import { Map as MapIcon } from 'lucide-react'
 import {
   AGENT_PROVIDER_LABEL,
   AGENT_PROVIDERS,
@@ -163,6 +164,7 @@ function WorkspaceCanvasInner({
   const [taskEditor, setTaskEditor] = useState<TaskEditorState | null>(null)
   const [taskDeleteConfirmation, setTaskDeleteConfirmation] =
     useState<TaskDeleteConfirmationState | null>(null)
+  const [isMinimapVisible, setIsMinimapVisible] = useState(true)
 
   const reactFlow = useReactFlow<Node<TerminalNodeData>>()
   const canvasRef = useRef<HTMLDivElement | null>(null)
@@ -1645,6 +1647,17 @@ function WorkspaceCanvasInner({
   const taskTitleProviderLabel = AGENT_PROVIDER_LABEL[resolveTaskTitleProvider(agentSettings)]
   const taskTitleModelLabel = resolveTaskTitleModel(agentSettings) ?? 'default model'
 
+  const minimapNodeColor = useCallback((node: Node<TerminalNodeData>): string => {
+    switch (node.data.kind) {
+      case 'agent':
+        return 'rgba(111, 188, 255, 0.72)'
+      case 'task':
+        return 'rgba(168, 160, 255, 0.72)'
+      default:
+        return 'rgba(130, 156, 255, 0.72)'
+    }
+  }, [])
+
   return (
     <div ref={canvasRef} className="workspace-canvas" onClick={() => setContextMenu(null)}>
       <ReactFlow<Node<TerminalNodeData>>
@@ -1665,15 +1678,36 @@ function WorkspaceCanvasInner({
         proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} size={1} gap={24} color="#20324f" />
-        <MiniMap
-          pannable
-          zoomable
-          style={{
-            background: 'rgba(7, 12, 24, 0.8)',
-            border: '1px solid rgba(83, 124, 255, 0.35)',
-          }}
-        />
-        <Controls />
+        <div
+          className={`workspace-canvas__minimap-dock${isMinimapVisible ? ' workspace-canvas__minimap-dock--expanded' : ''}`}
+        >
+          {isMinimapVisible ? (
+            <MiniMap
+              className="workspace-canvas__minimap"
+              pannable
+              zoomable
+              nodeColor={minimapNodeColor}
+              nodeBorderRadius={6}
+              maskColor="rgba(73, 132, 255, 0.16)"
+            />
+          ) : null}
+
+          <button
+            type="button"
+            className="workspace-canvas__minimap-toggle"
+            data-testid="workspace-minimap-toggle"
+            aria-label={isMinimapVisible ? 'Hide minimap' : 'Show minimap'}
+            title={isMinimapVisible ? 'Hide minimap' : 'Show minimap'}
+            onClick={event => {
+              event.stopPropagation()
+              setIsMinimapVisible(previous => !previous)
+            }}
+          >
+            <MapIcon aria-hidden="true" />
+          </button>
+        </div>
+
+        <Controls className="workspace-canvas__controls" showInteractive={false} />
       </ReactFlow>
 
       {contextMenu ? (

@@ -412,6 +412,60 @@ test.describe('Workspace Canvas Interactions', () => {
     }
   })
 
+  test('renders subdued canvas controls and collapsible minimap', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(window, [
+        {
+          id: 'node-controls-minimap',
+          title: 'terminal-controls-minimap',
+          position: { x: 180, y: 140 },
+          width: 460,
+          height: 300,
+        },
+      ])
+
+      const controls = window.locator('.workspace-canvas__controls')
+      await expect(controls).toBeVisible()
+
+      const controlsOpacity = await controls.evaluate(element => {
+        return Number.parseFloat(window.getComputedStyle(element).opacity)
+      })
+      expect(controlsOpacity).toBeLessThan(0.8)
+
+      const minimapToggle = window.locator('[data-testid="workspace-minimap-toggle"]')
+      const minimap = window.locator('.workspace-canvas__minimap')
+      await expect(minimap).toBeVisible()
+
+      const minimapOpacity = await minimap.evaluate(element => {
+        return Number.parseFloat(window.getComputedStyle(element).opacity)
+      })
+      expect(minimapOpacity).toBeLessThan(0.5)
+
+      await expect(minimapToggle).toHaveCSS('visibility', 'hidden')
+
+      await window.locator('.workspace-canvas__minimap-dock').hover()
+      await expect(minimapToggle).toBeVisible()
+      await expect(minimapToggle).toHaveCSS('visibility', 'visible')
+      await expect(minimapToggle).toHaveAttribute('aria-label', 'Hide minimap')
+
+      await minimapToggle.click()
+      await expect(minimap).toHaveCount(0)
+      await expect(minimapToggle).toBeVisible()
+      await expect(minimapToggle).toHaveCSS('visibility', 'visible')
+      await expect(minimapToggle).toHaveAttribute('aria-label', 'Show minimap')
+
+      await minimapToggle.click()
+      await expect(minimap).toBeVisible()
+      await window.locator('.workspace-canvas .react-flow__pane').hover()
+      await expect(minimapToggle).toHaveCSS('visibility', 'hidden')
+      await expect(minimapToggle).toHaveAttribute('aria-label', 'Hide minimap')
+    } finally {
+      await electronApp.close()
+    }
+  })
+
   test('dragging terminal header does not normalize canvas zoom', async () => {
     const { electronApp, window } = await launchApp()
 
