@@ -3236,18 +3236,18 @@ function WorkspaceCanvasInner({
       )
   }, [nodes, spaces])
 
-  const focusSpaceCenter = useCallback(
+  const focusSpaceInViewport = useCallback(
     (spaceId: string): void => {
       const targetSpace = spaceVisuals.find(space => space.id === spaceId)
       if (!targetSpace) {
         return
       }
 
-      const centerX = targetSpace.rect.x + targetSpace.rect.width / 2
-      const centerY = targetSpace.rect.y + targetSpace.rect.height / 2
-      void reactFlow.setCenter(centerX, centerY, {
-        zoom: reactFlow.getZoom(),
+      void reactFlow.fitBounds(targetSpace.rect, {
+        padding: 0.16,
         duration: 220,
+        minZoom: 0.1,
+        maxZoom: 2,
       })
     },
     [reactFlow, spaceVisuals],
@@ -3467,7 +3467,7 @@ function WorkspaceCanvasInner({
               data-testid={`workspace-space-switch-${space.id}`}
               onClick={() => {
                 onActiveSpaceChange(space.id)
-                focusSpaceCenter(space.id)
+                focusSpaceInViewport(space.id)
                 setEditingSpaceId(null)
                 setSpaceRenameDraft('')
               }}
