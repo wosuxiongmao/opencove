@@ -3253,6 +3253,19 @@ function WorkspaceCanvasInner({
     [reactFlow, spaceVisuals],
   )
 
+  const focusAllInViewport = useCallback((): void => {
+    if (nodesRef.current.length === 0) {
+      return
+    }
+
+    void reactFlow.fitView({
+      padding: 0.16,
+      duration: 220,
+      minZoom: 0.1,
+      maxZoom: 2,
+    })
+  }, [reactFlow])
+
   return (
     <div
       ref={canvasRef}
@@ -3453,6 +3466,7 @@ function WorkspaceCanvasInner({
             data-testid="workspace-space-switch-all"
             onClick={() => {
               onActiveSpaceChange(null)
+              focusAllInViewport()
               setEditingSpaceId(null)
               setSpaceRenameDraft('')
             }}

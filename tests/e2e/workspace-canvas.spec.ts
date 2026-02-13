@@ -1374,6 +1374,97 @@ test.describe('Workspace Canvas Interactions', () => {
     }
   })
 
+  test('fits global canvas when clicking All space switch item', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(
+        window,
+        [
+          {
+            id: 'space-all-node-a',
+            title: 'terminal-space-all-a',
+            position: { x: 120, y: 120 },
+            width: 460,
+            height: 300,
+          },
+          {
+            id: 'space-all-node-b',
+            title: 'terminal-space-all-b',
+            position: { x: 2480, y: 1560 },
+            width: 460,
+            height: 300,
+          },
+        ],
+        {
+          spaces: [
+            {
+              id: 'space-all-focus',
+              name: 'Deep Work',
+              directoryPath: testWorkspacePath,
+              nodeIds: ['space-all-node-b'],
+              rect: {
+                x: 2440,
+                y: 1520,
+                width: 560,
+                height: 380,
+              },
+            },
+          ],
+          activeSpaceId: null,
+        },
+      )
+
+      const canvasBounds = await window.evaluate(() => {
+        const surface = document.querySelector('.workspace-canvas .react-flow')
+        if (!(surface instanceof HTMLElement)) {
+          return null
+        }
+
+        return {
+          width: surface.clientWidth,
+          height: surface.clientHeight,
+        }
+      })
+
+      if (!canvasBounds) {
+        throw new Error('react-flow surface size unavailable')
+      }
+
+      await window.locator('[data-testid="workspace-space-switch-space-all-focus"]').click()
+      await expect(window.locator('.workspace-sidebar__space-label')).toHaveText('Space: Deep Work')
+
+      await window.locator('[data-testid="workspace-space-switch-all"]').click()
+      await expect(window.locator('.workspace-sidebar__space-label')).toHaveText('Space: All')
+
+      const targetNodes = [
+        { x: 120, y: 120, width: 460, height: 300 },
+        { x: 2480, y: 1560, width: 460, height: 300 },
+      ]
+
+      await expect
+        .poll(async () => {
+          const viewport = await readCanvasViewport(window)
+          const minFlowX = -viewport.x / viewport.zoom
+          const maxFlowX = (canvasBounds.width - viewport.x) / viewport.zoom
+          const minFlowY = -viewport.y / viewport.zoom
+          const maxFlowY = (canvasBounds.height - viewport.y) / viewport.zoom
+
+          return targetNodes.every(node => {
+            return (
+              minFlowX <= node.x + 2 &&
+              maxFlowX >= node.x + node.width - 2 &&
+              minFlowY <= node.y + 2 &&
+              maxFlowY >= node.y + node.height - 2
+            )
+          })
+        })
+        .toBe(true)
+    } finally {
+      await electronApp.close()
+    }
+  })
+
   test('renders space overlay layer below node windows', async () => {
     const { electronApp, window } = await launchApp()
 
