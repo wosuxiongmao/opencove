@@ -9,6 +9,21 @@ let ipcDisposable: ReturnType<typeof registerIpcHandlers> | null = null
 
 if (process.env.NODE_ENV === 'test' && process.env['COVE_TEST_USER_DATA_DIR']) {
   app.setPath('userData', resolve(process.env['COVE_TEST_USER_DATA_DIR']))
+} else if (app.isPackaged === false) {
+  const wantsSharedUserData =
+    isTruthyEnv(process.env['COVE_DEV_USE_SHARED_USER_DATA']) ||
+    process.argv.includes('--cove-shared-user-data') ||
+    process.argv.includes('--shared-user-data')
+
+  if (!wantsSharedUserData) {
+    const explicitDevUserDataDir = process.env['COVE_DEV_USER_DATA_DIR']
+    const defaultUserDataDir = app.getPath('userData')
+    const devUserDataDir = explicitDevUserDataDir
+      ? resolve(explicitDevUserDataDir)
+      : `${defaultUserDataDir}-dev`
+
+    app.setPath('userData', devUserDataDir)
+  }
 }
 
 const EXTERNAL_PROTOCOL_ALLOWLIST = new Set(['http:', 'https:', 'mailto:'])

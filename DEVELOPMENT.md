@@ -48,6 +48,9 @@
 
 -   **安装依赖**：`pnpm install`
 -   **启动开发环境**：`pnpm dev`
+    - 默认使用独立的 `userData` 目录（避免污染已安装版本的数据）
+    - 如需临时复用已安装包的数据：`COVE_DEV_USE_SHARED_USER_DATA=1 pnpm dev` 或 `pnpm dev -- --shared-user-data`
+    - 如需自定义 dev 的数据目录：`COVE_DEV_USER_DATA_DIR=/path/to/userData pnpm dev`
 -   **运行单元测试**：`pnpm test -- --run`
 -   **运行 E2E 测试**：`pnpm test:e2e`
     -   说明：`pnpm test:e2e` 已包含构建步骤，并在检测到 `hidden` 模式下的 Electron 崩溃特征时自动降级为 `offscreen` 重跑失败用例。
