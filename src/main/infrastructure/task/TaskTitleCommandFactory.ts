@@ -94,7 +94,14 @@ export function buildTaskTitleCommand(input: BuildTaskTitleCommandInput): TaskTi
     }
   }
 
-  const args = ['exec', '--skip-git-repo-check', '--sandbox', 'read-only']
+  const args = [
+    'exec',
+    '--skip-git-repo-check',
+    '--sandbox',
+    'read-only',
+    '-c',
+    'reasoning.effort="low"',
+  ]
 
   if (effectiveModel) {
     args.push('--model', effectiveModel)

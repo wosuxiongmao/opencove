@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react'
+import { useLayoutEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import type { TaskPriority } from '../../../types'
 import { TASK_PRIORITY_OPTIONS } from '../constants'
 import { normalizeTaskTagSelection } from '../helpers'
@@ -25,6 +25,16 @@ export function TaskCreatorWindow({
   generateTaskTitle,
   createTask,
 }: TaskCreatorWindowProps): React.JSX.Element | null {
+  const [isAdvancedSettingsVisible, setIsAdvancedSettingsVisible] = useState(false)
+
+  useLayoutEffect(() => {
+    if (!taskCreator) {
+      return
+    }
+
+    setIsAdvancedSettingsVisible(false)
+  }, [taskCreator])
+
   if (!taskCreator) {
     return null
   }
@@ -44,39 +54,14 @@ export function TaskCreatorWindow({
         }}
       >
         <h3>New Task</h3>
-        <p className="workspace-task-creator__meta">
-          Auto-task provider: {taskTitleProviderLabel} · Model: {taskTitleModelLabel}
-        </p>
 
         <div className="workspace-task-creator__field-row">
-          <label htmlFor="workspace-task-title">Task Name (optional)</label>
-          <input
-            id="workspace-task-title"
-            data-testid="workspace-task-title"
-            value={taskCreator.title}
-            disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
-            placeholder="Leave empty to auto-generate"
-            onChange={event => {
-              const nextValue = event.target.value
-              setTaskCreator(prev =>
-                prev
-                  ? {
-                      ...prev,
-                      title: nextValue,
-                      error: null,
-                    }
-                  : prev,
-              )
-            }}
-          />
-        </div>
-
-        <div className="workspace-task-creator__field-row">
-          <label htmlFor="workspace-task-requirement">Task Requirement (Prompt to Agent)</label>
+          <label htmlFor="workspace-task-requirement">Describe the task</label>
           <textarea
             id="workspace-task-requirement"
             data-testid="workspace-task-requirement"
             value={taskCreator.requirement}
+            autoFocus
             disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
             placeholder="输入任务要求..."
             onChange={event => {
@@ -94,101 +79,135 @@ export function TaskCreatorWindow({
           />
         </div>
 
-        <div className="workspace-task-creator__field-grid">
-          <div className="workspace-task-creator__field-row">
-            <label htmlFor="workspace-task-priority">Priority</label>
-            <select
-              id="workspace-task-priority"
-              data-testid="workspace-task-priority"
-              value={taskCreator.priority}
-              disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
-              onChange={event => {
-                const nextPriority = event.target.value as TaskPriority
-                setTaskCreator(prev =>
-                  prev
-                    ? {
-                        ...prev,
-                        priority: nextPriority,
-                      }
-                    : prev,
-                )
-              }}
-            >
-              {TASK_PRIORITY_OPTIONS.map(option => (
-                <option value={option.value} key={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
+        {isAdvancedSettingsVisible ? (
+          <>
+            <p className="workspace-task-creator__meta">
+              Auto-task provider: {taskTitleProviderLabel} · Model: {taskTitleModelLabel}
+            </p>
 
-          <div className="workspace-task-creator__field-row">
-            <label>Tags (select from presets)</label>
-            <div
-              className="workspace-task-creator__tag-options"
-              data-testid="workspace-task-tag-options"
-            >
-              {taskTagOptions.length > 0 ? (
-                taskTagOptions.map(tag => {
-                  const checked = taskCreator.selectedTags.includes(tag)
-
-                  return (
-                    <label className="workspace-task-creator__tag-option" key={tag}>
-                      <input
-                        type="checkbox"
-                        data-testid={`workspace-task-tag-option-${tag}`}
-                        checked={checked}
-                        disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
-                        onChange={event => {
-                          const isChecked = event.target.checked
-                          setTaskCreator(prev => {
-                            if (!prev) {
-                              return prev
-                            }
-
-                            const nextSelected = isChecked
-                              ? [...prev.selectedTags, tag]
-                              : prev.selectedTags.filter(item => item !== tag)
-
-                            return {
-                              ...prev,
-                              selectedTags: normalizeTaskTagSelection(nextSelected, taskTagOptions),
-                            }
-                          })
-                        }}
-                      />
-                      <span>{tag}</span>
-                    </label>
+            <div className="workspace-task-creator__field-row">
+              <label htmlFor="workspace-task-title">Task Name (optional)</label>
+              <input
+                id="workspace-task-title"
+                data-testid="workspace-task-title"
+                value={taskCreator.title}
+                disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
+                placeholder="Leave empty to auto-generate"
+                onChange={event => {
+                  const nextValue = event.target.value
+                  setTaskCreator(prev =>
+                    prev
+                      ? {
+                          ...prev,
+                          title: nextValue,
+                          error: null,
+                        }
+                      : prev,
                   )
-                })
-              ) : (
-                <span className="workspace-task-creator__hint">
-                  No task tags configured. Add tags in Settings.
-                </span>
-              )}
+                }}
+              />
             </div>
-          </div>
-        </div>
 
-        <label className="cove-window__checkbox workspace-task-creator__checkbox">
-          <input
-            type="checkbox"
-            data-testid="workspace-task-auto-generate-title"
-            checked={taskCreator.autoGenerateTitle}
-            disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
-            onChange={event => {
-              setTaskCreator(prev =>
-                prev
-                  ? {
-                      ...prev,
-                      autoGenerateTitle: event.target.checked,
-                    }
-                  : prev,
-              )
-            }}
-          />
-          <span>Auto-generate title/priority/tags when title is empty</span>
-        </label>
+            <div className="workspace-task-creator__field-grid">
+              <div className="workspace-task-creator__field-row">
+                <label htmlFor="workspace-task-priority">Priority</label>
+                <select
+                  id="workspace-task-priority"
+                  data-testid="workspace-task-priority"
+                  value={taskCreator.priority}
+                  disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
+                  onChange={event => {
+                    const nextPriority = event.target.value as TaskPriority
+                    setTaskCreator(prev =>
+                      prev
+                        ? {
+                            ...prev,
+                            priority: nextPriority,
+                          }
+                        : prev,
+                    )
+                  }}
+                >
+                  {TASK_PRIORITY_OPTIONS.map(option => (
+                    <option value={option.value} key={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="workspace-task-creator__field-row">
+                <label>Tags (select from presets)</label>
+                <div
+                  className="workspace-task-creator__tag-options"
+                  data-testid="workspace-task-tag-options"
+                >
+                  {taskTagOptions.length > 0 ? (
+                    taskTagOptions.map(tag => {
+                      const checked = taskCreator.selectedTags.includes(tag)
+
+                      return (
+                        <label className="workspace-task-creator__tag-option" key={tag}>
+                          <input
+                            type="checkbox"
+                            data-testid={`workspace-task-tag-option-${tag}`}
+                            checked={checked}
+                            disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
+                            onChange={event => {
+                              const isChecked = event.target.checked
+                              setTaskCreator(prev => {
+                                if (!prev) {
+                                  return prev
+                                }
+
+                                const nextSelected = isChecked
+                                  ? [...prev.selectedTags, tag]
+                                  : prev.selectedTags.filter(item => item !== tag)
+
+                                return {
+                                  ...prev,
+                                  selectedTags: normalizeTaskTagSelection(
+                                    nextSelected,
+                                    taskTagOptions,
+                                  ),
+                                }
+                              })
+                            }}
+                          />
+                          <span>{tag}</span>
+                        </label>
+                      )
+                    })
+                  ) : (
+                    <span className="workspace-task-creator__hint">
+                      No task tags configured. Add tags in Settings.
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <label className="cove-window__checkbox workspace-task-creator__checkbox">
+              <input
+                type="checkbox"
+                data-testid="workspace-task-auto-generate-title"
+                checked={taskCreator.autoGenerateTitle}
+                disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
+                onChange={event => {
+                  setTaskCreator(prev =>
+                    prev
+                      ? {
+                          ...prev,
+                          autoGenerateTitle: event.target.checked,
+                        }
+                      : prev,
+                  )
+                }}
+              />
+              <span>Auto-fill title/priority/tags by AI after creating</span>
+            </label>
+          </>
+        ) : null}
 
         {taskCreator.error ? (
           <p className="cove-window__error workspace-task-creator__error">{taskCreator.error}</p>
@@ -197,26 +216,28 @@ export function TaskCreatorWindow({
         <div className="cove-window__actions workspace-task-creator__actions">
           <button
             type="button"
-            className="cove-window__action cove-window__action--ghost workspace-task-creator__action workspace-task-creator__action--ghost"
-            data-testid="workspace-task-create-cancel"
+            className="cove-window__action cove-window__action--ghost workspace-task-creator__action workspace-task-creator__action--ghost workspace-task-creator__action--advanced-toggle"
+            data-testid="workspace-task-advanced-toggle"
             disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
             onClick={() => {
-              closeTaskCreator()
+              setIsAdvancedSettingsVisible(prev => !prev)
             }}
           >
-            Cancel
+            {isAdvancedSettingsVisible ? 'Hide Advanced' : 'Advanced'}
           </button>
-          <button
-            type="button"
-            className="cove-window__action cove-window__action--secondary workspace-task-creator__action workspace-task-creator__action--secondary"
-            data-testid="workspace-task-generate-title"
-            disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
-            onClick={() => {
-              void generateTaskTitle()
-            }}
-          >
-            {taskCreator.isGeneratingTitle ? 'Generating...' : 'Generate by AI'}
-          </button>
+          {isAdvancedSettingsVisible ? (
+            <button
+              type="button"
+              className="cove-window__action cove-window__action--secondary workspace-task-creator__action workspace-task-creator__action--secondary"
+              data-testid="workspace-task-generate-title"
+              disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
+              onClick={() => {
+                void generateTaskTitle()
+              }}
+            >
+              {taskCreator.isGeneratingTitle ? 'Generating...' : 'Generate by AI'}
+            </button>
+          ) : null}
           <button
             type="button"
             className="cove-window__action cove-window__action--primary workspace-task-creator__action workspace-task-creator__action--primary"

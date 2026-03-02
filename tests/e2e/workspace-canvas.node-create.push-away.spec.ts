@@ -40,6 +40,7 @@ test.describe('Workspace Canvas - Node Create (Push-away)', () => {
       await window.locator('[data-testid="workspace-context-new-task"]').click()
 
       await expect(window.locator('[data-testid="workspace-task-creator"]')).toBeVisible()
+      await window.locator('[data-testid="workspace-task-advanced-toggle"]').click()
       await window.locator('[data-testid="workspace-task-title"]').fill('Crowded Task')
       await window.locator('[data-testid="workspace-task-requirement"]').fill('push-away-on-create')
       await window.locator('[data-testid="workspace-task-create-submit"]').click()

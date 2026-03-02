@@ -99,6 +99,7 @@ test.describe('Workspace Canvas - Spaces (Auto Resize on Create)', () => {
       await window.locator('[data-testid="workspace-context-new-task"]').click()
 
       await expect(window.locator('[data-testid="workspace-task-creator"]')).toBeVisible()
+      await window.locator('[data-testid="workspace-task-advanced-toggle"]').click()
       await window.locator('[data-testid="workspace-task-title"]').fill('Crowded Task')
       await window.locator('[data-testid="workspace-task-requirement"]').fill('created-in-crowded')
       await window.locator('[data-testid="workspace-task-create-submit"]').click()

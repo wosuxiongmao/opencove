@@ -199,8 +199,7 @@ export function useWorkspaceCanvasNodeTypes({
             status={data.task.status}
             priority={data.task.priority}
             tags={data.task.tags}
-            createdAt={data.task.createdAt}
-            updatedAt={data.task.updatedAt}
+            isEnriching={data.task.isEnriching === true}
             linkedAgentTitle={linkedAgentTitle}
             linkedAgentNode={linkedAgentSummary}
             agentSessions={data.task.agentSessions ?? []}

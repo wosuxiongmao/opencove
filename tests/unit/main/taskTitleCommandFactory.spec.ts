@@ -17,6 +17,8 @@ describe('buildTaskTitleCommand', () => {
     expect(command.args).toContain('--sandbox')
     expect(command.args).toContain('read-only')
     expect(command.args).toContain('--skip-git-repo-check')
+    expect(command.args).toContain('-c')
+    expect(command.args).toContain('reasoning.effort="low"')
     expect(command.args).toContain('--model')
     expect(command.args).toContain('gpt-5.2-codex')
     expect(command.args).toContain('-o')

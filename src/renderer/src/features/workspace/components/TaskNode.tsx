@@ -13,7 +13,6 @@ import type { AgentProvider } from '../../settings/agentConfig'
 import { TaskNodeAgentSessions } from './taskNode/TaskNodeAgentSessions'
 import { TaskNodeFooter } from './taskNode/TaskNodeFooter'
 import {
-  formatTaskTimestamp,
   MIN_HEIGHT,
   MIN_WIDTH,
   shouldStopWheelPropagation,
@@ -26,8 +25,7 @@ interface TaskNodeProps {
   status: TaskRuntimeStatus
   priority: TaskPriority
   tags: string[]
-  createdAt: string | null
-  updatedAt: string | null
+  isEnriching: boolean
   linkedAgentTitle: string | null
   linkedAgentNode: {
     nodeId: string
@@ -61,8 +59,7 @@ export function TaskNode({
   status,
   priority,
   tags,
-  createdAt,
-  updatedAt,
+  isEnriching,
   linkedAgentTitle,
   linkedAgentNode,
   agentSessions,
@@ -236,7 +233,7 @@ export function TaskNode({
 
   return (
     <div
-      className="task-node nowheel"
+      className={`task-node nowheel${isEnriching ? ' task-node--enriching' : ''}`}
       style={style}
       onMouseDownCapture={event => {
         if (event.button !== 0) {
@@ -253,6 +250,14 @@ export function TaskNode({
     >
       <Handle type="target" position={Position.Left} className="workspace-node-handle" />
       <Handle type="source" position={Position.Right} className="workspace-node-handle" />
+
+      {isEnriching ? (
+        <span
+          className="task-node__enriching-spinner"
+          data-testid="task-node-enrichment"
+          aria-hidden="true"
+        />
+      ) : null}
 
       <div className="task-node__header" data-node-drag-handle="true">
         <div className="task-node__header-main">
@@ -298,11 +303,6 @@ export function TaskNode({
               {title}
             </button>
           )}
-
-          <span className="task-node__timestamps" data-testid="task-node-timestamps">
-            <span>Created {formatTaskTimestamp(createdAt)}</span>
-            <span>Updated {formatTaskTimestamp(updatedAt)}</span>
-          </span>
         </div>
 
         <div className="task-node__header-actions nodrag">

@@ -162,6 +162,10 @@
   background: rgba(34, 52, 90, 0.86);
 }
 
+.workspace-task-creator__action--advanced-toggle {
+  margin-right: auto;
+}
+
 .cove-window__action--secondary,
 .workspace-task-creator__action--secondary {
   border: 1px solid rgba(94, 160, 255, 0.55);
