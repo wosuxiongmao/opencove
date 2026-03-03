@@ -91,13 +91,15 @@ function WorkspaceCanvasInner({
     closeNode,
     normalizePosition,
     resizeNode,
-    applyPendingScrollbacks,
-    updateNodeScrollback,
-    updateTerminalTitle,
-    renameTerminalTitle,
-    createNodeForSession,
-    createTaskNode,
-  } = useWorkspaceCanvasNodesStore({
+	    applyPendingScrollbacks,
+	    updateNodeScrollback,
+	    updateTerminalTitle,
+	    renameTerminalTitle,
+	    updateNoteText,
+	    createNodeForSession,
+	    createNoteNode,
+	    createTaskNode,
+	  } = useWorkspaceCanvasNodesStore({
     nodes,
     spacesRef,
     onNodesChange,
@@ -311,17 +313,18 @@ function WorkspaceCanvasInner({
     nodesRef,
   })
 
-  useWorkspaceCanvasSyncActionRefs({
-    actionRefs,
-    closeNode,
-    resizeNode,
-    updateNodeScrollback,
-    updateTerminalTitle,
-    renameTerminalTitle,
-    normalizeZoomOnTerminalClick: agentSettings.normalizeZoomOnTerminalClick,
-    nodesRef,
-    reactFlow,
-  })
+	  useWorkspaceCanvasSyncActionRefs({
+	    actionRefs,
+	    closeNode,
+	    resizeNode,
+	    updateNoteText,
+	    updateNodeScrollback,
+	    updateTerminalTitle,
+	    renameTerminalTitle,
+	    normalizeZoomOnTerminalClick: agentSettings.normalizeZoomOnTerminalClick,
+	    nodesRef,
+	    reactFlow,
+	  })
 
   useWorkspaceCanvasPtyTaskCompletion({ setNodes })
 
@@ -336,35 +339,37 @@ function WorkspaceCanvasInner({
     ...actionRefs,
   })
 
-  const {
-    clearNodeSelection,
-    handleSelectionContextMenu,
-    handleNodeContextMenu,
-    handlePaneContextMenu,
-    handleSelectionChange,
-    handleCanvasPointerDownCapture,
-    handleCanvasPointerMoveCapture,
-    handleCanvasPointerUpCapture,
-    handlePaneClick,
-    createTerminalNode,
-  } = useWorkspaceCanvasInteractions({
-    isTrackpadCanvasMode,
-    isShiftPressedRef,
-    selectionDraftRef,
-    reactFlow,
-    setNodes,
-    setSelectedNodeIds,
-    setContextMenu,
-    setEmptySelectionPrompt,
-    cancelSpaceRename,
-    selectedNodeIdsRef,
-    contextMenu,
-    workspacePath,
-    spacesRef,
-    onSpacesChange,
-    nodesRef,
-    createNodeForSession,
-  })
+		  const {
+		    clearNodeSelection,
+		    handleSelectionContextMenu,
+		    handleNodeContextMenu,
+		    handlePaneContextMenu,
+		    handleSelectionChange,
+		    handleCanvasPointerDownCapture,
+		    handleCanvasPointerMoveCapture,
+		    handleCanvasPointerUpCapture,
+		    handleCanvasDoubleClickCapture,
+		    handlePaneClick,
+		    createTerminalNode,
+		  } = useWorkspaceCanvasInteractions({
+		    isTrackpadCanvasMode,
+		    isShiftPressedRef,
+	    selectionDraftRef,
+	    reactFlow,
+	    setNodes,
+	    setSelectedNodeIds,
+	    setContextMenu,
+	    setEmptySelectionPrompt,
+	    cancelSpaceRename,
+	    selectedNodeIdsRef,
+	    contextMenu,
+	    workspacePath,
+	    spacesRef,
+	    onSpacesChange,
+	    nodesRef,
+	    createNodeForSession,
+	    createNoteNode,
+	  })
   const applyChanges = useWorkspaceCanvasApplyNodeChanges({
     nodesRef,
     onNodesChange,
@@ -400,6 +405,7 @@ function WorkspaceCanvasInner({
       handleCanvasPointerDownCapture={handleCanvasPointerDownCapture}
       handleCanvasPointerMoveCapture={handleCanvasPointerMoveCapture}
       handleCanvasPointerUpCapture={handleCanvasPointerUpCapture}
+      handleCanvasDoubleClickCapture={handleCanvasDoubleClickCapture}
       handleCanvasWheelCapture={handleCanvasWheelCapture}
       nodes={nodes}
       edges={taskAgentEdges}
