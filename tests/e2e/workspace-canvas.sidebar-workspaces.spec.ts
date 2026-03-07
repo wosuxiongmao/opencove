@@ -7,6 +7,62 @@ import {
 } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Sidebar Workspaces', () => {
+  test('keeps settings visible while the project list scrolls', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await seedWorkspaceState(window, {
+        activeWorkspaceId: 'workspace-scroll-0',
+        workspaces: Array.from({ length: 18 }, (_, index) => ({
+          id: `workspace-scroll-${index}`,
+          name: `workspace-scroll-${index}`,
+          path: `${testWorkspacePath}-scroll-${index}`,
+          nodes: [],
+        })),
+      })
+
+      const sidebar = window.locator('.workspace-sidebar')
+      const sidebarList = window.locator('.workspace-sidebar__list')
+      const settingsButton = window.locator('.workspace-sidebar__settings')
+      const lastWorkspaceName = window.locator('.workspace-item__name', {
+        hasText: 'workspace-scroll-17',
+      })
+
+      await expect(settingsButton).toBeVisible()
+
+      const sidebarMetrics = await sidebarList.evaluate(element => {
+        element.scrollTop = element.scrollHeight
+
+        return {
+          clientHeight: element.clientHeight,
+          scrollHeight: element.scrollHeight,
+          scrollTop: element.scrollTop,
+        }
+      })
+
+      expect(sidebarMetrics.scrollHeight).toBeGreaterThan(sidebarMetrics.clientHeight)
+      expect(sidebarMetrics.scrollTop).toBeGreaterThan(0)
+      await expect(lastWorkspaceName).toBeVisible()
+
+      const [sidebarBox, settingsBox] = await Promise.all([
+        sidebar.boundingBox(),
+        settingsButton.boundingBox(),
+      ])
+
+      expect(sidebarBox).not.toBeNull()
+      expect(settingsBox).not.toBeNull()
+
+      if (sidebarBox && settingsBox) {
+        expect(settingsBox.y).toBeGreaterThanOrEqual(sidebarBox.y)
+        expect(settingsBox.y + settingsBox.height).toBeLessThanOrEqual(
+          sidebarBox.y + sidebarBox.height,
+        )
+      }
+    } finally {
+      await electronApp.close()
+    }
+  })
+
   test('shows agents under each workspace and focuses selected workspace', async () => {
     const { electronApp, window } = await launchApp()
 
