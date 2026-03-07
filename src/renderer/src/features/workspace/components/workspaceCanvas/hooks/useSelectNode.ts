@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import type { Node } from '@xyflow/react'
+import { useStoreApi, type Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../types'
 
 type SetNodes = (
@@ -11,13 +11,24 @@ export function useWorkspaceCanvasSelectNode({
   setNodes,
   setSelectedNodeIds,
   setSelectedSpaceIds,
+  selectedNodeIdsRef,
+  selectedSpaceIdsRef,
 }: {
   setNodes: SetNodes
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
   setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
+  selectedNodeIdsRef: React.MutableRefObject<string[]>
+  selectedSpaceIdsRef: React.MutableRefObject<string[]>
 }): (nodeId: string) => void {
+  const reactFlowStore = useStoreApi()
+
   return useCallback(
     (nodeId: string) => {
+      reactFlowStore.setState({ nodesSelectionActive: false })
+
+      const shouldPreserveSelectedSpaces =
+        selectedSpaceIdsRef.current.length > 0 && selectedNodeIdsRef.current.includes(nodeId)
+
       let didUpdateSelection = false
       setNodes(
         prevNodes => {
@@ -50,7 +61,9 @@ export function useWorkspaceCanvasSelectNode({
         return
       }
 
-      setSelectedSpaceIds([])
+      if (!shouldPreserveSelectedSpaces) {
+        setSelectedSpaceIds([])
+      }
       setSelectedNodeIds(previous => {
         if (previous.includes(nodeId)) {
           return previous
@@ -59,6 +72,13 @@ export function useWorkspaceCanvasSelectNode({
         return [nodeId]
       })
     },
-    [setNodes, setSelectedNodeIds, setSelectedSpaceIds],
+    [
+      reactFlowStore,
+      selectedNodeIdsRef,
+      selectedSpaceIdsRef,
+      setNodes,
+      setSelectedNodeIds,
+      setSelectedSpaceIds,
+    ],
   )
 }

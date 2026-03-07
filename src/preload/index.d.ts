@@ -1,5 +1,6 @@
 import type {
   AttachTerminalInput,
+  CopyWorkspacePathInput,
   CreateGitWorktreeInput,
   CreateGitWorktreeResult,
   DetachTerminalInput,
@@ -13,11 +14,15 @@ import type {
   ListGitWorktreesResult,
   ListAgentModelsInput,
   ListAgentModelsResult,
+  ListWorkspacePathOpenersResult,
+  OpenWorkspacePathInput,
   PersistWriteResult,
   ReadAppStateResult,
   ReadNodeScrollbackInput,
   ResizeTerminalInput,
   RemoveGitWorktreeInput,
+  RemoveGitWorktreeResult,
+  RenameGitBranchInput,
   SnapshotTerminalInput,
   SnapshotTerminalResult,
   SpawnTerminalInput,
@@ -53,12 +58,16 @@ export interface CoveApi {
   workspace: {
     selectDirectory: () => Promise<WorkspaceDirectory | null>
     ensureDirectory: (payload: EnsureDirectoryInput) => Promise<void>
+    copyPath: (payload: CopyWorkspacePathInput) => Promise<void>
+    listPathOpeners: () => Promise<ListWorkspacePathOpenersResult>
+    openPath: (payload: OpenWorkspacePathInput) => Promise<void>
   }
   worktree: {
     listBranches: (payload: ListGitBranchesInput) => Promise<ListGitBranchesResult>
     listWorktrees: (payload: ListGitWorktreesInput) => Promise<ListGitWorktreesResult>
     create: (payload: CreateGitWorktreeInput) => Promise<CreateGitWorktreeResult>
-    remove: (payload: RemoveGitWorktreeInput) => Promise<void>
+    remove: (payload: RemoveGitWorktreeInput) => Promise<RemoveGitWorktreeResult>
+    renameBranch: (payload: RenameGitBranchInput) => Promise<void>
     suggestNames: (payload: SuggestWorktreeNamesInput) => Promise<SuggestWorktreeNamesResult>
   }
   pty: {

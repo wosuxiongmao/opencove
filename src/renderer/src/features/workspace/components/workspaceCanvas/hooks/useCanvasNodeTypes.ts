@@ -1,0 +1,51 @@
+import type { MutableRefObject } from 'react'
+import type { Node } from '@xyflow/react'
+import type { AgentSettings } from '../../../../settings/agentConfig'
+import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { WorkspaceCanvasActionRefs } from './useActionRefs'
+import { useWorkspaceCanvasSelectNode } from './useSelectNode'
+import { useWorkspaceCanvasNodeTypes } from '../nodeTypes'
+
+export function useWorkspaceCanvasComposedNodeTypes({
+  setNodes,
+  setSelectedNodeIds,
+  setSelectedSpaceIds,
+  selectedNodeIdsRef,
+  selectedSpaceIdsRef,
+  nodesRef,
+  spacesRef,
+  workspacePath,
+  agentSettings,
+  actionRefs,
+}: {
+  setNodes: (
+    updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
+    options?: { syncLayout?: boolean },
+  ) => void
+  setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
+  setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
+  selectedNodeIdsRef: MutableRefObject<string[]>
+  selectedSpaceIdsRef: MutableRefObject<string[]>
+  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
+  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
+  workspacePath: string
+  agentSettings: AgentSettings
+  actionRefs: WorkspaceCanvasActionRefs
+}) {
+  const selectNode = useWorkspaceCanvasSelectNode({
+    setNodes,
+    setSelectedNodeIds,
+    setSelectedSpaceIds,
+    selectedNodeIdsRef,
+    selectedSpaceIdsRef,
+  })
+
+  return useWorkspaceCanvasNodeTypes({
+    nodesRef,
+    spacesRef,
+    workspacePath,
+    terminalFontSize: agentSettings.terminalFontSize,
+    selectNode,
+    ...actionRefs,
+  })
+}

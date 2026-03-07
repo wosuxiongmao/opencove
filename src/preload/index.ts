@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../shared/constants/ipc'
 import type {
   AttachTerminalInput,
+  CopyWorkspacePathInput,
   CreateGitWorktreeInput,
   CreateGitWorktreeResult,
   DetachTerminalInput,
@@ -15,11 +16,15 @@ import type {
   ListGitWorktreesResult,
   ListAgentModelsInput,
   ListAgentModelsResult,
+  ListWorkspacePathOpenersResult,
+  OpenWorkspacePathInput,
   PersistWriteResult,
   ReadAppStateResult,
   ReadNodeScrollbackInput,
   ResizeTerminalInput,
   RemoveGitWorktreeInput,
+  RemoveGitWorktreeResult,
+  RenameGitBranchInput,
   SnapshotTerminalInput,
   SnapshotTerminalResult,
   SpawnTerminalInput,
@@ -64,6 +69,12 @@ const coveApi = {
       ipcRenderer.invoke(IPC_CHANNELS.workspaceSelectDirectory),
     ensureDirectory: (payload: EnsureDirectoryInput): Promise<void> =>
       ipcRenderer.invoke(IPC_CHANNELS.workspaceEnsureDirectory, payload),
+    copyPath: (payload: CopyWorkspacePathInput): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workspaceCopyPath, payload),
+    listPathOpeners: (): Promise<ListWorkspacePathOpenersResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workspaceListPathOpeners),
+    openPath: (payload: OpenWorkspacePathInput): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.workspaceOpenPath, payload),
   },
   worktree: {
     listBranches: (payload: ListGitBranchesInput): Promise<ListGitBranchesResult> =>
@@ -72,8 +83,10 @@ const coveApi = {
       ipcRenderer.invoke(IPC_CHANNELS.worktreeListWorktrees, payload),
     create: (payload: CreateGitWorktreeInput): Promise<CreateGitWorktreeResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.worktreeCreate, payload),
-    remove: (payload: RemoveGitWorktreeInput): Promise<void> =>
+    remove: (payload: RemoveGitWorktreeInput): Promise<RemoveGitWorktreeResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.worktreeRemove, payload),
+    renameBranch: (payload: RenameGitBranchInput): Promise<void> =>
+      ipcRenderer.invoke(IPC_CHANNELS.worktreeRenameBranch, payload),
     suggestNames: (payload: SuggestWorktreeNamesInput): Promise<SuggestWorktreeNamesResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.worktreeSuggestNames, payload),
   },

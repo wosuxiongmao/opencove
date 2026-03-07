@@ -21,6 +21,11 @@ vi.mock('@xyflow/react', () => {
       getViewport: vi.fn(() => ({ x: 0, y: 0, zoom: 1 })),
       setViewport: vi.fn(),
     }),
+    useStoreApi: () => ({
+      setState: vi.fn(),
+      getState: vi.fn(() => ({})),
+      subscribe: vi.fn(),
+    }),
     ViewportPortal: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     applyNodeChanges: (_changes: unknown, nodes: unknown) => nodes,
     ReactFlow: (props: Record<string, unknown>) => {

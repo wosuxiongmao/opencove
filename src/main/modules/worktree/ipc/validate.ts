@@ -4,6 +4,7 @@ import type {
   ListGitBranchesInput,
   ListGitWorktreesInput,
   RemoveGitWorktreeInput,
+  RenameGitBranchInput,
   SuggestWorktreeNamesInput,
 } from '../../../../shared/types/api'
 import { isAbsolute } from 'node:path'
@@ -131,7 +132,7 @@ export function normalizeCreateGitWorktreePayload(payload: unknown): CreateGitWo
   const record = payload as Record<string, unknown>
   return {
     repoPath: normalizeAbsolutePath(record.repoPath, 'repoPath'),
-    worktreePath: normalizeAbsolutePath(record.worktreePath, 'worktreePath'),
+    worktreesRoot: normalizeAbsolutePath(record.worktreesRoot, 'worktreesRoot'),
     branchMode: normalizeBranchMode(record.branchMode),
   }
 }
@@ -146,6 +147,21 @@ export function normalizeRemoveGitWorktreePayload(payload: unknown): RemoveGitWo
     repoPath: normalizeAbsolutePath(record.repoPath, 'repoPath'),
     worktreePath: normalizeAbsolutePath(record.worktreePath, 'worktreePath'),
     force: record.force === true,
+    deleteBranch: record.deleteBranch === true,
+  }
+}
+
+export function normalizeRenameGitBranchPayload(payload: unknown): RenameGitBranchInput {
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Invalid payload for worktree:rename-branch')
+  }
+
+  const record = payload as Record<string, unknown>
+  return {
+    repoPath: normalizeAbsolutePath(record.repoPath, 'repoPath'),
+    worktreePath: normalizeAbsolutePath(record.worktreePath, 'worktreePath'),
+    currentName: normalizeTextValue(record.currentName),
+    nextName: normalizeTextValue(record.nextName),
   }
 }
 

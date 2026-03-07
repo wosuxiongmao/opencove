@@ -14,7 +14,6 @@ export function useSpaceWorktreeSuggestNames({
   setIsSuggesting,
   setError,
   setNewBranchName,
-  setWorktreeName,
 }: {
   space: WorkspaceSpaceState | null
   spaceNotes: string
@@ -24,7 +23,6 @@ export function useSpaceWorktreeSuggestNames({
   setIsSuggesting: React.Dispatch<React.SetStateAction<boolean>>
   setError: React.Dispatch<React.SetStateAction<string | null>>
   setNewBranchName: React.Dispatch<React.SetStateAction<string>>
-  setWorktreeName: React.Dispatch<React.SetStateAction<string>>
 }): () => Promise<void> {
   return useCallback(async () => {
     if (!space) {
@@ -49,7 +47,6 @@ export function useSpaceWorktreeSuggestNames({
       })
 
       setNewBranchName(suggested.branchName)
-      setWorktreeName(suggested.worktreeName)
     } catch (suggestError) {
       setError(`AI suggestion failed: ${toErrorMessage(suggestError)}`)
     } finally {
@@ -60,7 +57,6 @@ export function useSpaceWorktreeSuggestNames({
     setError,
     setIsSuggesting,
     setNewBranchName,
-    setWorktreeName,
     space,
     spaceNotes,
     spaceTasks,

@@ -53,6 +53,26 @@ export interface EnsureDirectoryInput {
   path: string
 }
 
+export interface CopyWorkspacePathInput {
+  path: string
+}
+
+export type WorkspacePathOpenerId = 'finder' | 'cursor' | 'vscode' | 'windsurf' | 'zed'
+
+export interface WorkspacePathOpener {
+  id: WorkspacePathOpenerId
+  label: string
+}
+
+export interface ListWorkspacePathOpenersResult {
+  openers: WorkspacePathOpener[]
+}
+
+export interface OpenWorkspacePathInput {
+  path: string
+  openerId: WorkspacePathOpenerId
+}
+
 export interface PseudoTerminalSession {
   sessionId: string
 }
@@ -209,7 +229,7 @@ export type CreateGitWorktreeBranchMode =
 
 export interface CreateGitWorktreeInput {
   repoPath: string
-  worktreePath: string
+  worktreesRoot: string
   branchMode: CreateGitWorktreeBranchMode
 }
 
@@ -221,6 +241,19 @@ export interface RemoveGitWorktreeInput {
   repoPath: string
   worktreePath: string
   force?: boolean
+  deleteBranch?: boolean
+}
+
+export interface RemoveGitWorktreeResult {
+  deletedBranchName: string | null
+  branchDeleteError: string | null
+}
+
+export interface RenameGitBranchInput {
+  repoPath: string
+  worktreePath: string
+  currentName: string
+  nextName: string
 }
 
 export interface SuggestWorktreeNamesInput {

@@ -2,96 +2,58 @@ import { useMemo } from 'react'
 import type { BranchMode } from './spaceWorktree.shared'
 
 export function useSpaceWorktreePanelHandlers({
-  spaceDirectoryPath,
   setError,
   setViewMode,
-  setRemoveWorktreeOnDetach,
-  setRemoveConfirmText,
-  setSelectedWorktreePath,
+  setDeleteBranchOnArchive,
+  setArchiveSpaceOnArchive,
   setBranchMode,
   setNewBranchName,
   setStartPoint,
   setExistingBranchName,
-  setWorktreeName,
-  refresh,
-  handleBind,
   handleSuggestNames,
   handleCreate,
-  handleDetachContinue,
-  handleDetachRemoveConfirm,
+  handleArchive,
 }: {
-  spaceDirectoryPath: string
   setError: React.Dispatch<React.SetStateAction<string | null>>
-  setViewMode: React.Dispatch<
-    React.SetStateAction<'home' | 'switch' | 'create' | 'detach' | 'detach-confirm'>
-  >
-  setRemoveWorktreeOnDetach: React.Dispatch<React.SetStateAction<boolean>>
-  setRemoveConfirmText: React.Dispatch<React.SetStateAction<string>>
-  setSelectedWorktreePath: React.Dispatch<React.SetStateAction<string>>
+  setViewMode: React.Dispatch<React.SetStateAction<'home' | 'create' | 'archive'>>
+  setDeleteBranchOnArchive: React.Dispatch<React.SetStateAction<boolean>>
+  setArchiveSpaceOnArchive: React.Dispatch<React.SetStateAction<boolean>>
   setBranchMode: React.Dispatch<React.SetStateAction<BranchMode>>
   setNewBranchName: React.Dispatch<React.SetStateAction<string>>
   setStartPoint: React.Dispatch<React.SetStateAction<string>>
   setExistingBranchName: React.Dispatch<React.SetStateAction<string>>
-  setWorktreeName: React.Dispatch<React.SetStateAction<string>>
-  refresh: (options?: { preferredWorktreePath?: string }) => Promise<void>
-  handleBind: () => Promise<void>
   handleSuggestNames: () => Promise<void>
   handleCreate: () => Promise<void>
-  handleDetachContinue: () => Promise<void>
-  handleDetachRemoveConfirm: () => Promise<void>
+  handleArchive: () => Promise<void>
 }): {
-  onOpenSwitch: () => void
   onOpenCreate: () => void
-  onOpenDetach: () => void
+  onOpenArchive: () => void
   onBackHome: () => void
-  onBackDetach: () => void
-  onSelectWorktreePath: (value: string) => void
-  onRefresh: () => void
-  onBind: () => void
   onBranchModeChange: (mode: BranchMode) => void
   onNewBranchNameChange: (value: string) => void
   onStartPointChange: (value: string) => void
   onExistingBranchNameChange: (value: string) => void
-  onWorktreeNameChange: (value: string) => void
   onSuggestNames: () => void
   onCreate: () => void
-  onRemoveWorktreeOnDetachChange: (checked: boolean) => void
-  onDetachContinue: () => void
-  onRemoveConfirmTextChange: (value: string) => void
-  onDetachRemoveConfirm: () => void
+  onDeleteBranchOnArchiveChange: (checked: boolean) => void
+  onArchiveSpaceOnArchiveChange: (checked: boolean) => void
+  onArchive: () => void
 } {
   return useMemo(
     () => ({
-      onOpenSwitch: () => {
-        setError(null)
-        setViewMode('switch')
-      },
       onOpenCreate: () => {
         setError(null)
         setViewMode('create')
       },
-      onOpenDetach: () => {
+      onOpenArchive: () => {
         setError(null)
-        setRemoveWorktreeOnDetach(false)
-        setRemoveConfirmText('')
-        setViewMode('detach')
+        setDeleteBranchOnArchive(false)
+        setArchiveSpaceOnArchive(false)
+        setViewMode('archive')
       },
       onBackHome: () => {
         setViewMode('home')
         setError(null)
-      },
-      onBackDetach: () => {
-        setViewMode('detach')
-        setError(null)
-      },
-      onSelectWorktreePath: (value: string) => {
-        setSelectedWorktreePath(value)
-      },
-      onRefresh: () => {
-        void refresh({ preferredWorktreePath: spaceDirectoryPath })
-      },
-      onBind: () => {
-        void handleBind()
       },
       onBranchModeChange: (mode: BranchMode) => {
         setBranchMode(mode)
@@ -109,49 +71,36 @@ export function useSpaceWorktreePanelHandlers({
         setExistingBranchName(value)
         setError(null)
       },
-      onWorktreeNameChange: (value: string) => {
-        setWorktreeName(value)
-        setError(null)
-      },
       onSuggestNames: () => {
         void handleSuggestNames()
       },
       onCreate: () => {
         void handleCreate()
       },
-      onRemoveWorktreeOnDetachChange: (checked: boolean) => {
-        setRemoveWorktreeOnDetach(checked)
+      onDeleteBranchOnArchiveChange: (checked: boolean) => {
+        setDeleteBranchOnArchive(checked)
         setError(null)
       },
-      onDetachContinue: () => {
-        void handleDetachContinue()
-      },
-      onRemoveConfirmTextChange: (value: string) => {
-        setRemoveConfirmText(value)
+      onArchiveSpaceOnArchiveChange: (checked: boolean) => {
+        setArchiveSpaceOnArchive(checked)
         setError(null)
       },
-      onDetachRemoveConfirm: () => {
-        void handleDetachRemoveConfirm()
+      onArchive: () => {
+        void handleArchive()
       },
     }),
     [
-      handleBind,
+      handleArchive,
       handleCreate,
-      handleDetachContinue,
-      handleDetachRemoveConfirm,
       handleSuggestNames,
-      refresh,
       setBranchMode,
+      setDeleteBranchOnArchive,
+      setArchiveSpaceOnArchive,
       setError,
       setExistingBranchName,
       setNewBranchName,
-      setRemoveConfirmText,
-      setRemoveWorktreeOnDetach,
-      setSelectedWorktreePath,
       setStartPoint,
       setViewMode,
-      setWorktreeName,
-      spaceDirectoryPath,
     ],
   )
 }

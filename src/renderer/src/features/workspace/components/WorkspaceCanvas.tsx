@@ -1,50 +1,9 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ReactFlowProvider, useReactFlow, type Edge, type Node, type Viewport } from '@xyflow/react'
-import {
-  AGENT_PROVIDER_LABEL,
-  resolveTaskTitleModel,
-  resolveTaskTitleProvider,
-} from '../../settings/agentConfig'
+import React, { useMemo } from 'react'
+import { ReactFlowProvider, useReactFlow, type Edge, type Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../types'
-import {
-  createCanvasInputModalityState,
-  type DetectedCanvasInputMode,
-} from '../utils/inputModality'
-import { useWorkspaceCanvasAgentNodeLifecycle } from './workspaceCanvas/hooks/useAgentNodeLifecycle'
-import { useWorkspaceCanvasAgentLauncher } from './workspaceCanvas/hooks/useAgentLauncher'
-import {
-  useWorkspaceCanvasActionRefs,
-  useWorkspaceCanvasSyncActionRefs,
-} from './workspaceCanvas/hooks/useActionRefs'
-import { useWorkspaceCanvasApplyNodeChanges } from './workspaceCanvas/hooks/useApplyNodeChanges'
-import { useWorkspaceCanvasInteractions } from './workspaceCanvas/hooks/useInteractions'
-import { useWorkspaceCanvasLifecycle } from './workspaceCanvas/hooks/useLifecycle'
-import { useWorkspaceCanvasNodesStore } from './workspaceCanvas/hooks/useNodesStore'
-import { useWorkspaceCanvasPtyTaskCompletion } from './workspaceCanvas/hooks/usePtyTaskCompletion'
-import { useWorkspaceCanvasTaskAgentEdges } from './workspaceCanvas/hooks/useTaskAgentEdges'
-import { useWorkspaceCanvasTaskActions } from './workspaceCanvas/hooks/useTaskActions'
-import { useWorkspaceCanvasTaskAssigner } from './workspaceCanvas/hooks/useTaskAssigner'
-import { useWorkspaceCanvasTaskAssignerOptions } from './workspaceCanvas/hooks/useTaskAssignerOptions'
-import { useWorkspaceCanvasTaskCreator } from './workspaceCanvas/hooks/useTaskCreator'
-import { useWorkspaceCanvasTaskDeleteConfirmation } from './workspaceCanvas/hooks/useTaskDeleteConfirmation'
-import { useWorkspaceCanvasTaskEditor } from './workspaceCanvas/hooks/useTaskEditor'
-import { useWorkspaceCanvasTrackpadGestures } from './workspaceCanvas/hooks/useTrackpadGestures'
-import { useWorkspaceCanvasSpaceDrag } from './workspaceCanvas/hooks/useSpaceDrag'
-import { useWorkspaceCanvasSpaceDirectoryOps } from './workspaceCanvas/hooks/useSpaceDirectoryOps'
-import { useWorkspaceCanvasSpaceOwnership } from './workspaceCanvas/hooks/useSpaceOwnership'
-import { useWorkspaceCanvasSpaces } from './workspaceCanvas/hooks/useSpaces'
-import { useWorkspaceCanvasSelectNode } from './workspaceCanvas/hooks/useSelectNode'
-import { useWorkspaceCanvasViewportMoveEnd } from './workspaceCanvas/hooks/useViewportMoveEnd'
-import { useWorkspaceCanvasNodeTypes } from './workspaceCanvas/nodeTypes'
+import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
 import { WorkspaceCanvasView } from './workspaceCanvas/WorkspaceCanvasView'
-import { resolveWorkspaceMinimapNodeColor } from './workspaceCanvas/minimap'
-import type {
-  ContextMenuState,
-  EmptySelectionPromptState,
-  SelectionDraftState,
-  TrackpadGestureLockState,
-  WorkspaceCanvasProps,
-} from './workspaceCanvas/types'
+import type { WorkspaceCanvasProps } from './workspaceCanvas/types'
 function WorkspaceCanvasInner({
   workspaceId,
   workspacePath,
@@ -62,44 +21,40 @@ function WorkspaceCanvasInner({
   focusNodeId,
   focusSequence,
 }: WorkspaceCanvasProps): React.JSX.Element {
-  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
-  const [isMinimapVisible, setIsMinimapVisible] = useState(persistedMinimapVisible)
-  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
-  const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([])
-  const [, setEmptySelectionPrompt] = useState<EmptySelectionPromptState | null>(null)
-  const [detectedCanvasInputMode, setDetectedCanvasInputMode] =
-    useState<DetectedCanvasInputMode>('mouse')
-  const [isShiftPressed, setIsShiftPressed] = useState(false)
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
-  const canvasRef = useRef<HTMLDivElement | null>(null)
-  const restoredViewportWorkspaceIdRef = useRef<string | null>(null)
-  const spacesRef = useRef(spaces)
-  const selectedNodeIdsRef = useRef<string[]>([])
-  const selectedSpaceIdsRef = useRef<string[]>([])
-  const selectionDraftRef = useRef<SelectionDraftState | null>(null)
-  const actionRefs = useWorkspaceCanvasActionRefs()
-  const inputModalityStateRef = useRef(createCanvasInputModalityState('mouse'))
-  const isShiftPressedRef = useRef(false)
-  const trackpadGestureLockRef = useRef<TrackpadGestureLockState | null>(null)
-  const viewportRef = useRef<Viewport>(viewport)
-  const [spaceWorktreeSpaceId, setSpaceWorktreeSpaceId] = useState<string | null>(null)
-  const flowNodes = useMemo(() => {
-    return nodes.map(node => {
-      if (node.data.kind === 'note') {
-        return node
-      }
-
-      const dragHandle = '[data-node-drag-handle="true"]'
-      if (node.dragHandle === dragHandle) {
-        return node
-      }
-
-      return {
-        ...node,
-        dragHandle,
-      }
-    })
-  }, [nodes])
+  const {
+    contextMenu,
+    setContextMenu,
+    isMinimapVisible,
+    setIsMinimapVisible,
+    selectedNodeIds,
+    setSelectedNodeIds,
+    selectedSpaceIds,
+    setSelectedSpaceIds,
+    setEmptySelectionPrompt,
+    detectedCanvasInputMode,
+    setDetectedCanvasInputMode,
+    isShiftPressed,
+    setIsShiftPressed,
+    canvasRef,
+    restoredViewportWorkspaceIdRef,
+    spacesRef,
+    selectedNodeIdsRef,
+    selectedSpaceIdsRef,
+    dragSelectedSpaceIdsRef,
+    selectionDraftRef,
+    inputModalityStateRef,
+    isShiftPressedRef,
+    trackpadGestureLockRef,
+    viewportRef,
+    flowNodes,
+  } = workspaceCanvasHooks.useWorkspaceCanvasState({
+    nodes,
+    spaces,
+    viewport,
+    persistedMinimapVisible,
+  })
+  const actionRefs = workspaceCanvasHooks.useWorkspaceCanvasActionRefs()
   const {
     nodesRef,
     isNodeDraggingRef,
@@ -118,7 +73,7 @@ function WorkspaceCanvasInner({
     createNodeForSession,
     createNoteNode,
     createTaskNode,
-  } = useWorkspaceCanvasNodesStore({
+  } = workspaceCanvasHooks.useWorkspaceCanvasNodesStore({
     nodes: flowNodes,
     spacesRef,
     onNodesChange,
@@ -127,7 +82,7 @@ function WorkspaceCanvasInner({
     defaultTerminalWindowScalePercent: agentSettings.defaultTerminalWindowScalePercent,
   })
   const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } =
-    useWorkspaceCanvasSpaceDirectoryOps({
+    workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({
       workspacePath,
       spacesRef,
       nodesRef,
@@ -148,7 +103,7 @@ function WorkspaceCanvasInner({
     spaceVisuals,
     focusSpaceInViewport,
     focusAllInViewport,
-  } = useWorkspaceCanvasSpaces({
+  } = workspaceCanvasHooks.useWorkspaceCanvasSpaces({
     workspaceId,
     workspacePath,
     reactFlow,
@@ -164,40 +119,44 @@ function WorkspaceCanvasInner({
     setContextMenu,
     setEmptySelectionPrompt,
   })
-  const { spaceFramePreview, handleSpaceDragHandlePointerDown } = useWorkspaceCanvasSpaceDrag({
-    workspaceId,
-    reactFlow,
-    nodesRef,
-    spacesRef,
-    selectedNodeIdsRef,
-    setNodes,
-    onSpacesChange,
-    onRequestPersistFlush,
-    setContextMenu,
-    cancelSpaceRename,
-    setEmptySelectionPrompt,
-  })
+  const { spaceFramePreview, handleSpaceDragHandlePointerDown } =
+    workspaceCanvasHooks.useWorkspaceCanvasSpaceDrag({
+      workspaceId,
+      reactFlow,
+      nodesRef,
+      spacesRef,
+      selectedNodeIdsRef,
+      setNodes,
+      onSpacesChange,
+      onRequestPersistFlush,
+      setContextMenu,
+      cancelSpaceRename,
+      setEmptySelectionPrompt,
+    })
   const {
     handleNodeDragStart,
     handleSelectionDragStart,
     handleNodeDragStop,
     handleSelectionDragStop,
-  } = useWorkspaceCanvasSpaceOwnership({
+  } = workspaceCanvasHooks.useWorkspaceCanvasSpaceOwnership({
     workspacePath,
     reactFlow,
     spacesRef,
+    selectedSpaceIdsRef,
+    dragSelectedSpaceIdsRef,
     setNodes,
     onSpacesChange,
     onRequestPersistFlush,
   })
-  const { buildAgentNodeTitle, launchAgentInNode } = useWorkspaceCanvasAgentNodeLifecycle({
-    nodesRef,
-    setNodes,
-    bumpAgentLaunchToken,
-    isAgentLaunchTokenCurrent,
-    agentFullAccess: agentSettings.agentFullAccess,
-  })
-  const { openAgentLauncher } = useWorkspaceCanvasAgentLauncher({
+  const { buildAgentNodeTitle, launchAgentInNode } =
+    workspaceCanvasHooks.useWorkspaceCanvasAgentNodeLifecycle({
+      nodesRef,
+      setNodes,
+      bumpAgentLaunchToken,
+      isAgentLaunchTokenCurrent,
+      agentFullAccess: agentSettings.agentFullAccess,
+    })
+  const { openAgentLauncher } = workspaceCanvasHooks.useWorkspaceCanvasAgentLauncher({
     agentSettings,
     workspacePath,
     nodesRef,
@@ -214,7 +173,7 @@ function WorkspaceCanvasInner({
     const fromSettings = agentSettings.taskTagOptions ?? []
     return [...new Set(fromSettings.map(tag => tag.trim()).filter(tag => tag.length > 0))]
   }, [agentSettings.taskTagOptions])
-  const { suggestTaskTitle } = useWorkspaceCanvasTaskActions({
+  const { suggestTaskTitle } = workspaceCanvasHooks.useWorkspaceCanvasTaskActions({
     nodesRef,
     spacesRef,
     onSpacesChange,
@@ -240,10 +199,22 @@ function WorkspaceCanvasInner({
     closeTaskCreator,
     generateTaskTitle,
     createTask,
-  } = useWorkspaceCanvasTaskCreator({
+    taskEditor,
+    setTaskEditor,
+    closeTaskEditor,
+    generateTaskEditorTitle,
+    saveTaskEdits,
+    taskAssigner,
+    setTaskAssigner,
+    closeTaskAssigner,
+    applyTaskAssignment,
+    taskDeleteConfirmation,
+    setTaskDeleteConfirmation,
+    confirmTaskDelete,
+  } = workspaceCanvasHooks.useWorkspaceCanvasTaskWindows({
+    taskTagOptions,
     contextMenu,
     setContextMenu,
-    taskTagOptions,
     nodesRef,
     setNodes,
     spacesRef,
@@ -251,33 +222,9 @@ function WorkspaceCanvasInner({
     onRequestPersistFlush,
     suggestTaskTitle,
     createTaskNode,
+    closeNode,
+    actionRefs,
   })
-  const { taskEditor, setTaskEditor, closeTaskEditor, generateTaskEditorTitle, saveTaskEdits } =
-    useWorkspaceCanvasTaskEditor({
-      nodesRef,
-      setNodes,
-      onRequestPersistFlush,
-      setContextMenu,
-      suggestTaskTitle,
-      taskTagOptions,
-      openTaskEditorRef: actionRefs.openTaskEditorRef,
-    })
-  const { taskAssigner, setTaskAssigner, closeTaskAssigner, applyTaskAssignment } =
-    useWorkspaceCanvasTaskAssigner({
-      nodesRef,
-      spacesRef,
-      onSpacesChange,
-      setNodes,
-      onRequestPersistFlush,
-      setContextMenu,
-      openTaskAssignerRef: actionRefs.openTaskAssignerRef,
-    })
-  const { taskDeleteConfirmation, setTaskDeleteConfirmation, confirmTaskDelete } =
-    useWorkspaceCanvasTaskDeleteConfirmation({
-      nodesRef,
-      closeNode,
-      requestTaskDeleteRef: actionRefs.requestTaskDeleteRef,
-    })
   const resolvedCanvasInputMode = useMemo<DetectedCanvasInputMode>(() => {
     if (agentSettings.canvasInputMode === 'auto') {
       return detectedCanvasInputMode
@@ -285,7 +232,7 @@ function WorkspaceCanvasInner({
     return agentSettings.canvasInputMode
   }, [agentSettings.canvasInputMode, detectedCanvasInputMode])
   const isTrackpadCanvasMode = resolvedCanvasInputMode === 'trackpad'
-  const { handleCanvasWheelCapture } = useWorkspaceCanvasTrackpadGestures({
+  const { handleCanvasWheelCapture } = workspaceCanvasHooks.useWorkspaceCanvasTrackpadGestures({
     canvasInputModeSetting: agentSettings.canvasInputMode,
     resolvedCanvasInputMode,
     inputModalityStateRef,
@@ -296,7 +243,7 @@ function WorkspaceCanvasInner({
     reactFlow,
     onViewportChange,
   })
-  useWorkspaceCanvasLifecycle({
+  workspaceCanvasHooks.useWorkspaceCanvasLifecycle({
     workspaceId,
     persistedMinimapVisible,
     setIsMinimapVisible,
@@ -320,13 +267,7 @@ function WorkspaceCanvasInner({
     focusSequence,
     nodesRef,
   })
-  useLayoutEffect(() => {
-    selectedNodeIdsRef.current = selectedNodeIds
-  }, [selectedNodeIds])
-  useLayoutEffect(() => {
-    selectedSpaceIdsRef.current = selectedSpaceIds
-  }, [selectedSpaceIds])
-  useWorkspaceCanvasSyncActionRefs({
+  workspaceCanvasHooks.useWorkspaceCanvasSyncActionRefs({
     actionRefs,
     closeNode,
     resizeNode,
@@ -338,23 +279,22 @@ function WorkspaceCanvasInner({
     nodesRef,
     reactFlow,
   })
-  useWorkspaceCanvasPtyTaskCompletion({
+  workspaceCanvasHooks.useWorkspaceCanvasPtyTaskCompletion({
     setNodes,
     onRequestPersistFlush,
   })
 
-  const selectNode = useWorkspaceCanvasSelectNode({
+  const nodeTypes = workspaceCanvasHooks.useWorkspaceCanvasComposedNodeTypes({
     setNodes,
     setSelectedNodeIds,
     setSelectedSpaceIds,
-  })
-  const nodeTypes = useWorkspaceCanvasNodeTypes({
+    selectedNodeIdsRef,
+    selectedSpaceIdsRef,
     nodesRef,
     spacesRef,
     workspacePath,
-    terminalFontSize: agentSettings.terminalFontSize,
-    selectNode,
-    ...actionRefs,
+    agentSettings,
+    actionRefs,
   })
   const {
     clearNodeSelection,
@@ -368,7 +308,7 @@ function WorkspaceCanvasInner({
     handleCanvasDoubleClickCapture,
     handlePaneClick,
     createTerminalNode,
-  } = useWorkspaceCanvasInteractions({
+  } = workspaceCanvasHooks.useWorkspaceCanvasInteractions({
     isTrackpadCanvasMode,
     isShiftPressedRef,
     selectionDraftRef,
@@ -389,7 +329,7 @@ function WorkspaceCanvasInner({
     createNodeForSession,
     createNoteNode,
   })
-  const applyChanges = useWorkspaceCanvasApplyNodeChanges({
+  const applyChanges = workspaceCanvasHooks.useWorkspaceCanvasApplyNodeChanges({
     nodesRef,
     onNodesChange,
     clearAgentLaunchToken,
@@ -399,33 +339,58 @@ function WorkspaceCanvasInner({
     selectionDraftRef,
     spacesRef,
     selectedSpaceIdsRef,
+    dragSelectedSpaceIdsRef,
     onSpacesChange,
     onRequestPersistFlush,
   })
-
-  const taskTitleProviderLabel = AGENT_PROVIDER_LABEL[resolveTaskTitleProvider(agentSettings)],
-    taskTitleModelLabel = resolveTaskTitleModel(agentSettings) ?? 'default model'
-  const handleViewportMoveEnd = useWorkspaceCanvasViewportMoveEnd({ viewportRef, onViewportChange })
-  const minimapNodeColor = resolveWorkspaceMinimapNodeColor
-
-  const { taskAssignerAgentOptions, activeTaskForAssigner } = useWorkspaceCanvasTaskAssignerOptions(
-    {
-      nodes: flowNodes,
-      taskAssigner,
+  const {
+    taskTitleProviderLabel,
+    taskTitleModelLabel,
+    handleViewportMoveEnd,
+    minimapNodeColor,
+    taskAssignerAgentOptions,
+    activeTaskForAssigner,
+    taskAgentEdges,
+    spaceUi: {
+      spaceActionMenu,
+      spaceWorktreeDialog,
+      availablePathOpeners,
+      handleCanvasClick,
+      closeContextMenu,
+      handlePaneClickWithSpaceMenuClose,
+      handlePaneContextMenuWithSpaceMenuClose,
+      handleNodeContextMenuWithSpaceMenuClose,
+      handleSelectionContextMenuWithSpaceMenuClose,
+      openSpaceActionMenu,
+      closeSpaceActionMenu,
+      copySpacePath,
+      openSpacePath,
+      openSpaceCreateWorktree,
+      openSpaceArchive,
+      closeSpaceWorktree,
     },
-  )
-
-  const taskAgentEdges = useWorkspaceCanvasTaskAgentEdges(flowNodes)
-
+  } = workspaceCanvasHooks.useWorkspaceCanvasViewModel({
+    agentSettings,
+    viewportRef,
+    onViewportChange,
+    flowNodes,
+    taskAssigner,
+    contextMenu,
+    setContextMenu,
+    setEmptySelectionPrompt,
+    cancelSpaceRename,
+    workspacePath,
+    spacesRef,
+    handlePaneClick,
+    handlePaneContextMenu,
+    handleNodeContextMenu,
+    handleSelectionContextMenu,
+  })
   return (
     <WorkspaceCanvasView
       canvasRef={canvasRef}
       resolvedCanvasInputMode={resolvedCanvasInputMode}
-      onCanvasClick={() => {
-        setContextMenu(null)
-        setEmptySelectionPrompt(null)
-        cancelSpaceRename()
-      }}
+      onCanvasClick={handleCanvasClick}
       handleCanvasPointerDownCapture={handleCanvasPointerDownCapture}
       handleCanvasPointerMoveCapture={handleCanvasPointerMoveCapture}
       handleCanvasPointerUpCapture={handleCanvasPointerUpCapture}
@@ -435,10 +400,10 @@ function WorkspaceCanvasInner({
       edges={taskAgentEdges}
       nodeTypes={nodeTypes}
       onNodesChange={applyChanges}
-      onPaneClick={handlePaneClick}
-      onPaneContextMenu={handlePaneContextMenu}
-      onNodeContextMenu={handleNodeContextMenu}
-      onSelectionContextMenu={handleSelectionContextMenu}
+      onPaneClick={handlePaneClickWithSpaceMenuClose}
+      onPaneContextMenu={handlePaneContextMenuWithSpaceMenuClose}
+      onNodeContextMenu={handleNodeContextMenuWithSpaceMenuClose}
+      onSelectionContextMenu={handleSelectionContextMenuWithSpaceMenuClose}
       onSelectionChange={handleSelectionChange}
       onNodeDragStart={handleNodeDragStart}
       onSelectionDragStart={handleSelectionDragStart}
@@ -468,9 +433,7 @@ function WorkspaceCanvasInner({
       focusSpaceInViewport={focusSpaceInViewport}
       focusAllInViewport={focusAllInViewport}
       contextMenu={contextMenu}
-      closeContextMenu={() => {
-        setContextMenu(null)
-      }}
+      closeContextMenu={closeContextMenu}
       createTerminalNode={createTerminalNode}
       openTaskCreator={openTaskCreator}
       openAgentLauncher={openAgentLauncher}
@@ -500,10 +463,17 @@ function WorkspaceCanvasInner({
       confirmTaskDelete={confirmTaskDelete}
       agentSettings={agentSettings}
       workspacePath={workspacePath}
-      spaceWorktreeSpaceId={spaceWorktreeSpaceId}
+      spaceActionMenu={spaceActionMenu}
+      availablePathOpeners={availablePathOpeners}
+      openSpaceActionMenu={openSpaceActionMenu}
+      closeSpaceActionMenu={closeSpaceActionMenu}
+      copySpacePath={copySpacePath}
+      openSpacePath={openSpacePath}
+      spaceWorktreeDialog={spaceWorktreeDialog}
       worktreesRoot={worktreesRoot}
-      openSpaceWorktree={spaceId => setSpaceWorktreeSpaceId(spaceId)}
-      closeSpaceWorktree={() => setSpaceWorktreeSpaceId(null)}
+      openSpaceCreateWorktree={openSpaceCreateWorktree}
+      openSpaceArchive={openSpaceArchive}
+      closeSpaceWorktree={closeSpaceWorktree}
       updateSpaceDirectory={updateSpaceDirectory}
       getSpaceBlockingNodes={getSpaceBlockingNodes}
       closeNodesById={closeNodesById}

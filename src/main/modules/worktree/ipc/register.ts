@@ -8,6 +8,8 @@ import type {
   ListGitWorktreesInput,
   ListGitWorktreesResult,
   RemoveGitWorktreeInput,
+  RemoveGitWorktreeResult,
+  RenameGitBranchInput,
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
 } from '../../../../shared/types/api'
@@ -18,6 +20,7 @@ import {
   listGitBranches,
   listGitWorktrees,
   removeGitWorktree,
+  renameGitBranch,
 } from '../../../infrastructure/worktree/GitWorktreeService'
 import { suggestWorktreeNames } from '../../../infrastructure/worktree/WorktreeNameSuggester'
 import {
@@ -25,6 +28,7 @@ import {
   normalizeListGitBranchesPayload,
   normalizeListGitWorktreesPayload,
   normalizeRemoveGitWorktreePayload,
+  normalizeRenameGitBranchPayload,
   normalizeSuggestWorktreeNamesPayload,
 } from './validate'
 
@@ -62,12 +66,12 @@ export function registerWorktreeIpcHandlers(
     async (_event, payload: CreateGitWorktreeInput): Promise<CreateGitWorktreeResult> => {
       const normalized = normalizeCreateGitWorktreePayload(payload)
 
-      const [repoApproved, worktreeApproved] = await Promise.all([
+      const [repoApproved, worktreesRootApproved] = await Promise.all([
         approvedWorkspaces.isPathApproved(normalized.repoPath),
-        approvedWorkspaces.isPathApproved(normalized.worktreePath),
+        approvedWorkspaces.isPathApproved(normalized.worktreesRoot),
       ])
 
-      if (!repoApproved || !worktreeApproved) {
+      if (!repoApproved || !worktreesRootApproved) {
         throw new Error('worktree:create path is outside approved workspaces')
       }
 
@@ -78,7 +82,7 @@ export function registerWorktreeIpcHandlers(
 
   ipcMain.handle(
     IPC_CHANNELS.worktreeRemove,
-    async (_event, payload: RemoveGitWorktreeInput): Promise<void> => {
+    async (_event, payload: RemoveGitWorktreeInput): Promise<RemoveGitWorktreeResult> => {
       const normalized = normalizeRemoveGitWorktreePayload(payload)
 
       const [repoApproved, worktreeApproved] = await Promise.all([
@@ -90,7 +94,25 @@ export function registerWorktreeIpcHandlers(
         throw new Error('worktree:remove path is outside approved workspaces')
       }
 
-      await removeGitWorktree(normalized)
+      return await removeGitWorktree(normalized)
+    },
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.worktreeRenameBranch,
+    async (_event, payload: RenameGitBranchInput): Promise<void> => {
+      const normalized = normalizeRenameGitBranchPayload(payload)
+
+      const [repoApproved, worktreeApproved] = await Promise.all([
+        approvedWorkspaces.isPathApproved(normalized.repoPath),
+        approvedWorkspaces.isPathApproved(normalized.worktreePath),
+      ])
+
+      if (!repoApproved || !worktreeApproved) {
+        throw new Error('worktree:rename-branch path is outside approved workspaces')
+      }
+
+      await renameGitBranch(normalized)
     },
   )
 
@@ -113,6 +135,7 @@ export function registerWorktreeIpcHandlers(
       ipcMain.removeHandler(IPC_CHANNELS.worktreeListWorktrees)
       ipcMain.removeHandler(IPC_CHANNELS.worktreeCreate)
       ipcMain.removeHandler(IPC_CHANNELS.worktreeRemove)
+      ipcMain.removeHandler(IPC_CHANNELS.worktreeRenameBranch)
       ipcMain.removeHandler(IPC_CHANNELS.worktreeSuggestNames)
     },
   }

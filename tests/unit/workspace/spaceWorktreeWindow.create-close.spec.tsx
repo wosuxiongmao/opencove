@@ -35,7 +35,11 @@ describe('SpaceWorktreeWindow create flow', () => {
       worktrees: [{ path: '/repo', head: 'abc', branch: 'main' }],
     }))
     const create = vi.fn(async () => ({
-      worktree: { path: '/repo/.cove/worktrees/demo', head: null, branch: 'space/demo' },
+      worktree: {
+        path: '/repo/.cove/worktrees/space-demo--1a2b3c4d',
+        head: null,
+        branch: 'space/demo',
+      },
     }))
     const onClose = vi.fn()
 
@@ -53,7 +57,10 @@ describe('SpaceWorktreeWindow create flow', () => {
             effectiveModel: 'gpt-5.2-codex',
           })),
           create,
-          remove: vi.fn(async () => undefined),
+          remove: vi.fn(async () => ({
+            deletedBranchName: null,
+            branchDeleteError: null,
+          })),
         },
       },
     })
@@ -80,20 +87,17 @@ describe('SpaceWorktreeWindow create flow', () => {
 
     fireEvent.click(await screen.findByTestId('space-worktree-open-create'))
     expect(await screen.findByTestId('space-worktree-create-view')).toBeVisible()
+    expect(screen.queryByTestId('space-worktree-name')).not.toBeInTheDocument()
 
     fireEvent.change(screen.getByTestId('space-worktree-branch-name'), {
       target: { value: 'space/demo' },
     })
-    fireEvent.change(screen.getByTestId('space-worktree-name'), {
-      target: { value: 'demo' },
-    })
-
     fireEvent.click(screen.getByTestId('space-worktree-create'))
 
     await waitFor(() => {
       expect(create).toHaveBeenCalledWith({
         repoPath: '/repo',
-        worktreePath: '/repo/.cove/worktrees/demo',
+        worktreesRoot: '/repo/.cove/worktrees',
         branchMode: { kind: 'new', name: 'space/demo', startPoint: 'main' },
       })
       expect(onClose).toHaveBeenCalledTimes(1)

@@ -20,6 +20,8 @@ export function useWorkspaceCanvasSpaceOwnership({
   workspacePath,
   reactFlow,
   spacesRef,
+  selectedSpaceIdsRef,
+  dragSelectedSpaceIdsRef,
   setNodes,
   onSpacesChange,
   onRequestPersistFlush,
@@ -27,6 +29,8 @@ export function useWorkspaceCanvasSpaceOwnership({
   workspacePath: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
+  selectedSpaceIdsRef: React.MutableRefObject<string[]>
+  dragSelectedSpaceIdsRef: React.MutableRefObject<string[] | null>
   setNodes: SetNodes
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
@@ -370,9 +374,13 @@ export function useWorkspaceCanvasSpaceOwnership({
     ],
   )
 
-  const captureDragStartNodeIds = useCallback((nodes: Node<TerminalNodeData>[]) => {
-    dragStartNodeIdsRef.current = nodes.map(node => node.id)
-  }, [])
+  const captureDragStartNodeIds = useCallback(
+    (nodes: Node<TerminalNodeData>[]) => {
+      dragStartNodeIdsRef.current = nodes.map(node => node.id)
+      dragSelectedSpaceIdsRef.current = [...selectedSpaceIdsRef.current]
+    },
+    [dragSelectedSpaceIdsRef, selectedSpaceIdsRef],
+  )
 
   const handleNodeDragStart = useCallback(
     (_event: React.MouseEvent, node: Node<TerminalNodeData>, nodes: Node<TerminalNodeData>[]) => {
@@ -427,8 +435,9 @@ export function useWorkspaceCanvasSpaceOwnership({
       }
 
       applyOwnershipForDrop({ draggedNodeIds, draggedNodePositionById, dropFlowPoint: dropPoint })
+      dragSelectedSpaceIdsRef.current = null
     },
-    [applyOwnershipForDrop, reactFlow],
+    [applyOwnershipForDrop, dragSelectedSpaceIdsRef, reactFlow],
   )
 
   const handleSelectionDragStop = useCallback(
@@ -471,8 +480,9 @@ export function useWorkspaceCanvasSpaceOwnership({
       }
 
       applyOwnershipForDrop({ draggedNodeIds, draggedNodePositionById, dropFlowPoint: dropPoint })
+      dragSelectedSpaceIdsRef.current = null
     },
-    [applyOwnershipForDrop, reactFlow],
+    [applyOwnershipForDrop, dragSelectedSpaceIdsRef, reactFlow],
   )
 
   return {

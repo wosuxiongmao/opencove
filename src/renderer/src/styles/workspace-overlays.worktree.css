@@ -276,3 +276,13 @@
   display: grid;
   gap: 6px;
 }
+
+.workspace-space-worktree__create-grid-span-two {
+  grid-column: span 2;
+}
+
+@media (max-width: 760px) {
+  .workspace-space-worktree__create-grid-span-two {
+    grid-column: auto;
+  }
+}

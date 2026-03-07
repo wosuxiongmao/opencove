@@ -57,7 +57,7 @@ export function useSpaceWorktreeGuardActions({
         markNodeDirectoryMismatch: true,
       })
       setGuard(null)
-      if (guard.pending.kind === 'create') {
+      if (guard.pending.kind === 'create' || guard.pending.kind === 'archive') {
         onClose()
       }
     } catch (operationError) {
@@ -106,7 +106,7 @@ export function useSpaceWorktreeGuardActions({
 
       await executePendingOperation(guard.spaceId, guard.pending)
       setGuard(null)
-      if (guard.pending.kind === 'create') {
+      if (guard.pending.kind === 'create' || guard.pending.kind === 'archive') {
         onClose()
       }
     } catch (operationError) {

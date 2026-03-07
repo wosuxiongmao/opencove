@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react'
-import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
+import { useStoreApi, type Edge, type Node, type ReactFlowInstance } from '@xyflow/react'
 import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type {
   ContextMenuState,
@@ -7,9 +7,11 @@ import type {
   EmptySelectionPromptState,
   SelectionDraftState,
 } from '../types'
-import { sanitizeSpaces } from '../helpers'
 import { useWorkspaceCanvasSelectionDraft } from './useSelectionDraft'
-import { expandSpaceToFitOwnedNodesAndPushAway } from '../../../utils/spaceAutoResize'
+import {
+  assignNodeToSpaceAndExpand,
+  findContainingSpaceByAnchor,
+} from './useInteractions.spaceAssignment'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -74,6 +76,8 @@ export function useWorkspaceCanvasInteractions({
   handlePaneClick: (_event: React.MouseEvent | MouseEvent) => void
   createTerminalNode: () => Promise<void>
 } {
+  const reactFlowStore = useStoreApi()
+
   const clearNodeSelection = useCallback(() => {
     setNodes(
       prevNodes => {
@@ -96,7 +100,8 @@ export function useWorkspaceCanvasInteractions({
     )
     setSelectedNodeIds([])
     setSelectedSpaceIds([])
-  }, [setNodes, setSelectedNodeIds, setSelectedSpaceIds])
+    reactFlowStore.setState({ nodesSelectionActive: false })
+  }, [reactFlowStore, setNodes, setSelectedNodeIds, setSelectedSpaceIds])
 
   const openSelectionContextMenu = useCallback(
     (x: number, y: number) => {
@@ -210,7 +215,9 @@ export function useWorkspaceCanvasInteractions({
         !isShiftPressedRef.current &&
         event.target instanceof Element &&
         !event.target.closest('.react-flow__node') &&
-        (event.target.closest('.react-flow__pane') || event.target.closest('.react-flow__renderer'))
+        (event.target.closest('.react-flow__pane') ||
+          event.target.closest('.react-flow__renderer') ||
+          event.target.closest('.react-flow__background'))
       ) {
         paneDragRef.current = {
           startX: event.clientX,
@@ -242,19 +249,26 @@ export function useWorkspaceCanvasInteractions({
     [handleCanvasPointerMoveCapture],
   )
 
-  const handleCanvasPointerUpCaptureWithDragGuard = useCallback(() => {
-    const draft = paneDragRef.current
-    paneDragRef.current = null
+  const handleCanvasPointerUpCaptureWithDragGuard = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (selectionDraftRef.current?.phase === 'active') {
+        event.preventDefault()
+        event.stopPropagation()
+      }
 
-    if (draft?.didMove) {
-      ignoreNextPaneClickRef.current = true
-      window.setTimeout(() => {
-        ignoreNextPaneClickRef.current = false
-      }, 0)
-    }
+      const draft = paneDragRef.current
+      paneDragRef.current = null
+      const didCommitSelectionDraft = handleCanvasPointerUpCapture(event)
 
-    handleCanvasPointerUpCapture()
-  }, [handleCanvasPointerUpCapture])
+      if (draft?.didMove || didCommitSelectionDraft) {
+        ignoreNextPaneClickRef.current = true
+        window.setTimeout(() => {
+          ignoreNextPaneClickRef.current = false
+        }, 0)
+      }
+    },
+    [handleCanvasPointerUpCapture, selectionDraftRef],
+  )
 
   const handleCanvasDoubleClickCapture = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
@@ -267,7 +281,9 @@ export function useWorkspaceCanvasInteractions({
       }
 
       const isFlowClickTarget =
-        event.target.closest('.react-flow__pane') || event.target.closest('.react-flow__renderer')
+        event.target.closest('.react-flow__pane') ||
+        event.target.closest('.react-flow__renderer') ||
+        event.target.closest('.react-flow__background')
       if (!isFlowClickTarget) {
         return
       }
@@ -304,79 +320,19 @@ export function useWorkspaceCanvasInteractions({
         return
       }
 
-      const targetSpace =
-        spacesRef.current.find(space => {
-          if (!space.rect) {
-            return false
-          }
-
-          return (
-            anchor.x >= space.rect.x &&
-            anchor.x <= space.rect.x + space.rect.width &&
-            anchor.y >= space.rect.y &&
-            anchor.y <= space.rect.y + space.rect.height
-          )
-        }) ?? null
-
+      const targetSpace = findContainingSpaceByAnchor(spacesRef.current, anchor)
       if (!targetSpace) {
         return
       }
 
-      const nextSpaces = sanitizeSpaces(
-        spacesRef.current.map(space => {
-          const filtered = space.nodeIds.filter(nodeId => nodeId !== created.id)
-
-          if (space.id !== targetSpace.id) {
-            return { ...space, nodeIds: filtered }
-          }
-
-          return { ...space, nodeIds: [...new Set([...filtered, created.id])] }
-        }),
-      )
-
-      const { spaces: pushedSpaces, nodePositionById } = expandSpaceToFitOwnedNodesAndPushAway({
+      assignNodeToSpaceAndExpand({
+        createdNodeId: created.id,
         targetSpaceId: targetSpace.id,
-        spaces: nextSpaces,
-        nodeRects: nodesRef.current.map(node => ({
-          id: node.id,
-          rect: {
-            x: node.position.x,
-            y: node.position.y,
-            width: node.data.width,
-            height: node.data.height,
-          },
-        })),
-        gap: 24,
+        spacesRef,
+        nodesRef,
+        setNodes,
+        onSpacesChange,
       })
-
-      if (nodePositionById.size > 0) {
-        setNodes(
-          prevNodes => {
-            let hasChanged = false
-            const next = prevNodes.map(node => {
-              const nextPosition = nodePositionById.get(node.id)
-              if (!nextPosition) {
-                return node
-              }
-
-              if (node.position.x === nextPosition.x && node.position.y === nextPosition.y) {
-                return node
-              }
-
-              hasChanged = true
-              return {
-                ...node,
-                position: nextPosition,
-              }
-            })
-
-            return hasChanged ? next : prevNodes
-          },
-          { syncLayout: false },
-        )
-      }
-
-      onSpacesChange(pushedSpaces)
     },
     [
       cancelSpaceRename,
@@ -418,19 +374,7 @@ export function useWorkspaceCanvasInteractions({
 
     setContextMenu(null)
 
-    const targetSpace =
-      spacesRef.current.find(space => {
-        if (!space.rect) {
-          return false
-        }
-
-        return (
-          anchor.x >= space.rect.x &&
-          anchor.x <= space.rect.x + space.rect.width &&
-          anchor.y >= space.rect.y &&
-          anchor.y <= space.rect.y + space.rect.height
-        )
-      }) ?? null
+    const targetSpace = findContainingSpaceByAnchor(spacesRef.current, anchor)
 
     const resolvedCwd =
       targetSpace && targetSpace.directoryPath.trim().length > 0
@@ -456,61 +400,14 @@ export function useWorkspaceCanvasInteractions({
       return
     }
 
-    const nextSpaces = sanitizeSpaces(
-      spacesRef.current.map(space => {
-        const filtered = space.nodeIds.filter(nodeId => nodeId !== created.id)
-
-        if (space.id !== targetSpace.id) {
-          return { ...space, nodeIds: filtered }
-        }
-
-        return { ...space, nodeIds: [...new Set([...filtered, created.id])] }
-      }),
-    )
-
-    const { spaces: pushedSpaces, nodePositionById } = expandSpaceToFitOwnedNodesAndPushAway({
+    assignNodeToSpaceAndExpand({
+      createdNodeId: created.id,
       targetSpaceId: targetSpace.id,
-      spaces: nextSpaces,
-      nodeRects: nodesRef.current.map(node => ({
-        id: node.id,
-        rect: {
-          x: node.position.x,
-          y: node.position.y,
-          width: node.data.width,
-          height: node.data.height,
-        },
-      })),
-      gap: 24,
+      spacesRef,
+      nodesRef,
+      setNodes,
+      onSpacesChange,
     })
-
-    if (nodePositionById.size > 0) {
-      setNodes(
-        prevNodes => {
-          let hasChanged = false
-          const next = prevNodes.map(node => {
-            const nextPosition = nodePositionById.get(node.id)
-            if (!nextPosition) {
-              return node
-            }
-
-            if (node.position.x === nextPosition.x && node.position.y === nextPosition.y) {
-              return node
-            }
-
-            hasChanged = true
-            return {
-              ...node,
-              position: nextPosition,
-            }
-          })
-
-          return hasChanged ? next : prevNodes
-        },
-        { syncLayout: false },
-      )
-    }
-
-    onSpacesChange(pushedSpaces)
   }, [
     contextMenu,
     createNodeForSession,

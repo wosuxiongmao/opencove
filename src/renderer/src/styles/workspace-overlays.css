@@ -361,3 +361,95 @@
     0 16px 34px rgba(0, 0, 0, 0.52),
     0 0 24px rgba(132, 214, 255, 0.4);
 }
+
+.workspace-space-region__branch-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 196, 112, 0.52);
+  background: rgba(55, 35, 12, 0.92);
+  color: rgba(255, 228, 180, 0.96);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: calc(10px * var(--cove-ui-font-scale));
+  line-height: 1.4;
+  max-width: 240px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font: inherit;
+}
+
+.workspace-space-region__branch-badge--button {
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.workspace-space-region__branch-badge--button:hover {
+  border-color: rgba(255, 214, 142, 0.85);
+  background: rgba(91, 59, 19, 0.95);
+  color: #fff0cf;
+}
+
+.workspace-space-region__branch-badge--button:active {
+  transform: translateY(1px);
+}
+
+.workspace-space-region__branch-badge--button:focus-visible {
+  outline: 2px solid rgba(255, 212, 132, 0.72);
+  outline-offset: 2px;
+}
+
+.workspace-space-action-menu {
+  z-index: 12;
+  min-width: 188px;
+}
+
+.workspace-space-action-menu--submenu {
+  z-index: 13;
+}
+
+.workspace-space-action-menu__chevron {
+  margin-left: auto;
+}
+
+.workspace-space-branch-rename-backdrop {
+  z-index: 24;
+}
+
+.workspace-space-branch-rename.cove-window {
+  width: min(440px, calc(100vw - 48px));
+}
+
+.workspace-space-branch-rename__header {
+  display: grid;
+  gap: 6px;
+}
+
+.workspace-space-branch-rename__header h3 {
+  margin: 0;
+}
+
+.workspace-space-branch-rename__meta {
+  margin: 0;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  color: rgba(184, 205, 241, 0.9);
+}
+
+.workspace-space-branch-rename__prompt {
+  margin: 0;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  color: rgba(227, 236, 255, 0.94);
+}
+
+.workspace-space-branch-rename__error {
+  margin-top: 4px;
+}
+
+.workspace-space-branch-rename__actions {
+  margin-top: 6px;
+}

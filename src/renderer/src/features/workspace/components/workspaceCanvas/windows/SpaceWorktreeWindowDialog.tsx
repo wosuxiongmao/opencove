@@ -4,15 +4,8 @@ import type { WorkspaceSpaceState } from '../../../types'
 import { SpaceWorktreePanels } from './SpaceWorktreePanels'
 import type { BranchMode, SpaceWorktreeViewMode } from './spaceWorktree.shared'
 
-function getDirectoryName(pathValue: string): string {
-  const normalized = pathValue.trim().replace(/[\\/]+$/, '')
-  const parts = normalized.split(/[\\/]/).filter(Boolean)
-  return parts[parts.length - 1] ?? normalized
-}
-
 export function SpaceWorktreeWindowDialog({
   space,
-  currentDirectoryLabel,
   isSpaceOnWorkspaceRoot,
   currentWorktree,
   viewMode,
@@ -21,42 +14,30 @@ export function SpaceWorktreeWindowDialog({
   isSuggesting,
   branches,
   currentBranch,
-  worktrees,
-  selectedWorktreePath,
   branchMode,
   newBranchName,
   startPoint,
   existingBranchName,
-  worktreeName,
-  removeWorktreeOnDetach,
-  removeConfirmText,
-  workspacePath,
+  deleteBranchOnArchive,
+  archiveSpaceOnArchive,
   error,
   guardIsBusy,
   onBackdropClose,
   onClose,
-  onOpenSwitch,
   onOpenCreate,
-  onOpenDetach,
+  onOpenArchive,
   onBackHome,
-  onBackDetach,
-  onSelectWorktreePath,
-  onRefresh,
-  onBind,
   onBranchModeChange,
   onNewBranchNameChange,
   onStartPointChange,
   onExistingBranchNameChange,
-  onWorktreeNameChange,
   onSuggestNames,
   onCreate,
-  onRemoveWorktreeOnDetachChange,
-  onDetachContinue,
-  onRemoveConfirmTextChange,
-  onDetachRemoveConfirm,
+  onDeleteBranchOnArchiveChange,
+  onArchiveSpaceOnArchiveChange,
+  onArchive,
 }: {
   space: WorkspaceSpaceState
-  currentDirectoryLabel: string
   isSpaceOnWorkspaceRoot: boolean
   currentWorktree: GitWorktreeInfo | null
   viewMode: SpaceWorktreeViewMode
@@ -65,44 +46,29 @@ export function SpaceWorktreeWindowDialog({
   isSuggesting: boolean
   branches: string[]
   currentBranch: string | null
-  worktrees: GitWorktreeInfo[]
-  selectedWorktreePath: string
   branchMode: BranchMode
   newBranchName: string
   startPoint: string
   existingBranchName: string
-  worktreeName: string
-  removeWorktreeOnDetach: boolean
-  removeConfirmText: string
-  workspacePath: string
+  deleteBranchOnArchive: boolean
+  archiveSpaceOnArchive: boolean
   error: string | null
   guardIsBusy: boolean
   onBackdropClose: () => void
   onClose: () => void
-  onOpenSwitch: () => void
   onOpenCreate: () => void
-  onOpenDetach: () => void
+  onOpenArchive: () => void
   onBackHome: () => void
-  onBackDetach: () => void
-  onSelectWorktreePath: (path: string) => void
-  onRefresh: () => void
-  onBind: () => void
   onBranchModeChange: (mode: BranchMode) => void
   onNewBranchNameChange: (value: string) => void
   onStartPointChange: (value: string) => void
   onExistingBranchNameChange: (value: string) => void
-  onWorktreeNameChange: (value: string) => void
   onSuggestNames: () => void
   onCreate: () => void
-  onRemoveWorktreeOnDetachChange: (checked: boolean) => void
-  onDetachContinue: () => void
-  onRemoveConfirmTextChange: (value: string) => void
-  onDetachRemoveConfirm: () => void
+  onDeleteBranchOnArchiveChange: (checked: boolean) => void
+  onArchiveSpaceOnArchiveChange: (checked: boolean) => void
+  onArchive: () => void
 }): React.JSX.Element {
-  const displayWorktreeName = isSpaceOnWorkspaceRoot
-    ? space.name
-    : getDirectoryName(currentWorktree?.path ?? space.directoryPath)
-
   return (
     <div
       className="cove-window-backdrop workspace-space-worktree-backdrop"
@@ -122,13 +88,15 @@ export function SpaceWorktreeWindowDialog({
         }}
       >
         <header className="workspace-space-worktree__header">
-          <h3>Worktree · {displayWorktreeName}</h3>
+          <h3>Space Workspace</h3>
           <p className="workspace-space-worktree__meta">
-            Current directory: <strong>{currentDirectoryLabel}</strong>
+            {isSpaceOnWorkspaceRoot
+              ? `${space.name} is using the workspace root.`
+              : `${space.name} is bound to a Cove-managed worktree.`}
           </p>
           <div className="workspace-space-worktree__status-row">
             <span className="workspace-space-worktree__status-chip">
-              {isSpaceOnWorkspaceRoot ? 'Workspace root' : 'Bound to worktree'}
+              {isSpaceOnWorkspaceRoot ? 'Workspace Root' : 'Managed Worktree'}
             </span>
             {currentWorktree?.branch ? (
               <span className="workspace-space-worktree__status-chip workspace-space-worktree__status-chip--branch">
@@ -147,35 +115,24 @@ export function SpaceWorktreeWindowDialog({
           isSpaceOnWorkspaceRoot={isSpaceOnWorkspaceRoot}
           branches={branches}
           currentBranch={currentBranch}
-          worktrees={worktrees}
-          selectedWorktreePath={selectedWorktreePath}
           branchMode={branchMode}
           newBranchName={newBranchName}
           startPoint={startPoint}
           existingBranchName={existingBranchName}
-          worktreeName={worktreeName}
-          removeWorktreeOnDetach={removeWorktreeOnDetach}
-          removeConfirmText={removeConfirmText}
-          workspacePath={workspacePath}
-          onOpenSwitch={onOpenSwitch}
+          deleteBranchOnArchive={deleteBranchOnArchive}
+          archiveSpaceOnArchive={archiveSpaceOnArchive}
           onOpenCreate={onOpenCreate}
-          onOpenDetach={onOpenDetach}
+          onOpenArchive={onOpenArchive}
           onBackHome={onBackHome}
-          onBackDetach={onBackDetach}
-          onSelectWorktreePath={onSelectWorktreePath}
-          onRefresh={onRefresh}
-          onBind={onBind}
           onBranchModeChange={onBranchModeChange}
           onNewBranchNameChange={onNewBranchNameChange}
           onStartPointChange={onStartPointChange}
           onExistingBranchNameChange={onExistingBranchNameChange}
-          onWorktreeNameChange={onWorktreeNameChange}
           onSuggestNames={onSuggestNames}
           onCreate={onCreate}
-          onRemoveWorktreeOnDetachChange={onRemoveWorktreeOnDetachChange}
-          onDetachContinue={onDetachContinue}
-          onRemoveConfirmTextChange={onRemoveConfirmTextChange}
-          onDetachRemoveConfirm={onDetachRemoveConfirm}
+          onDeleteBranchOnArchiveChange={onDeleteBranchOnArchiveChange}
+          onArchiveSpaceOnArchiveChange={onArchiveSpaceOnArchiveChange}
+          onArchive={onArchive}
         />
 
         {error ? (

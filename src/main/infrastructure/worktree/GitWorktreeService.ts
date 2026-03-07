@@ -1,111 +1,13 @@
-import { spawn } from 'node:child_process'
-import { mkdir, readdir, realpath, stat } from 'node:fs/promises'
-import { basename, dirname, isAbsolute, resolve } from 'node:path'
-
-const DEFAULT_GIT_TIMEOUT_MS = 30_000
-
-interface GitCommandResult {
-  exitCode: number
-  stdout: string
-  stderr: string
-}
-
-function normalizeOptionalText(value: string | null | undefined): string | null {
-  if (typeof value !== 'string') {
-    return null
-  }
-
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
-}
-
-async function runGit(
-  args: string[],
-  cwd: string,
-  options: { timeoutMs?: number } = {},
-): Promise<GitCommandResult> {
-  const timeoutMs = options.timeoutMs ?? DEFAULT_GIT_TIMEOUT_MS
-
-  return await new Promise((resolvePromise, reject) => {
-    const child = spawn('git', args, {
-      cwd,
-      env: process.env,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-
-    let stdout = ''
-    let stderr = ''
-    let timedOut = false
-
-    const timeoutHandle = setTimeout(() => {
-      timedOut = true
-      child.kill('SIGKILL')
-    }, timeoutMs)
-
-    child.stdout.on('data', chunk => {
-      stdout += chunk.toString()
-    })
-
-    child.stderr.on('data', chunk => {
-      stderr += chunk.toString()
-    })
-
-    child.on('error', error => {
-      clearTimeout(timeoutHandle)
-      reject(error)
-    })
-
-    child.on('close', exitCode => {
-      clearTimeout(timeoutHandle)
-
-      if (timedOut) {
-        reject(new Error('git command timed out'))
-        return
-      }
-
-      resolvePromise({
-        exitCode: typeof exitCode === 'number' ? exitCode : 1,
-        stdout,
-        stderr,
-      })
-    })
-  })
-}
-
-async function ensureGitRepo(repoPath: string): Promise<void> {
-  const result = await runGit(['rev-parse', '--is-inside-work-tree'], repoPath)
-  const isRepo = result.exitCode === 0 && result.stdout.trim() === 'true'
-
-  if (!isRepo) {
-    const message = normalizeOptionalText(result.stderr) ?? 'Not a git repository'
-    throw new Error(message)
-  }
-}
-
-async function toCanonicalPath(pathValue: string): Promise<string> {
-  const normalized = resolve(pathValue)
-
-  try {
-    return await realpath(normalized)
-  } catch {
-    return normalized
-  }
-}
-
-async function toCanonicalPathEvenIfMissing(pathValue: string): Promise<string> {
-  const normalized = resolve(pathValue)
-
-  try {
-    return await realpath(normalized)
-  } catch {
-    try {
-      const parent = await realpath(dirname(normalized))
-      return resolve(parent, basename(normalized))
-    } catch {
-      return normalized
-    }
-  }
-}
+import { randomBytes } from 'node:crypto'
+import {
+  ensureGitRepo,
+  normalizeOptionalText,
+  runGit,
+  toCanonicalPath,
+  toCanonicalPathEvenIfMissing,
+} from './GitWorktreeService.shared'
+import { mkdir, readdir, stat } from 'node:fs/promises'
+import { isAbsolute, resolve } from 'node:path'
 
 export interface GitWorktreeEntry {
   path: string
@@ -263,7 +165,7 @@ export type CreateGitWorktreeBranchMode =
 
 export interface CreateGitWorktreeInput {
   repoPath: string
-  worktreePath: string
+  worktreesRoot: string
   branchMode: CreateGitWorktreeBranchMode
 }
 
@@ -271,11 +173,93 @@ export interface RemoveGitWorktreeInput {
   repoPath: string
   worktreePath: string
   force?: boolean
+  deleteBranch?: boolean
+}
+
+export interface RemoveGitWorktreeResult {
+  deletedBranchName: string | null
+  branchDeleteError: string | null
+}
+
+export interface RenameGitBranchInput {
+  repoPath: string
+  worktreePath: string
+  currentName: string
+  nextName: string
+}
+
+function toSafeWorktreeDirectorySeed(branchName: string): string {
+  const slug = branchName
+    .trim()
+    .toLowerCase()
+    .replace(/[\s._/\\]+/g, '-')
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48)
+
+  return slug.length > 0 ? slug : 'worktree'
+}
+
+function buildCandidateWorktreeDirectoryName(branchName: string): string {
+  return `${toSafeWorktreeDirectorySeed(branchName)}--${randomBytes(4).toString('hex')}`
+}
+
+async function assertValidGitBranchName(
+  repoPath: string,
+  branchName: string,
+  label: string,
+): Promise<void> {
+  const result = await runGit(['check-ref-format', '--branch', branchName], repoPath)
+  if (result.exitCode === 0) {
+    return
+  }
+
+  throw new Error(normalizeOptionalText(result.stderr) ?? `${label} is invalid`)
+}
+
+async function allocateWorktreePath({
+  worktreesRoot,
+  branchName,
+  existingWorktrees,
+}: {
+  worktreesRoot: string
+  branchName: string
+  existingWorktrees: GitWorktreeEntry[]
+}): Promise<string> {
+  const canonicalRoot = await toCanonicalPathEvenIfMissing(worktreesRoot)
+  const existingPathSet = new Set(existingWorktrees.map(entry => entry.path))
+
+  const candidatePaths = await Promise.all(
+    Array.from({ length: 12 }, async () =>
+      toCanonicalPathEvenIfMissing(
+        resolve(canonicalRoot, buildCandidateWorktreeDirectoryName(branchName)),
+      ),
+    ),
+  )
+
+  const uniqueCandidates = [...new Set(candidatePaths)].filter(
+    candidate => !existingPathSet.has(candidate),
+  )
+
+  const emptinessChecks = await Promise.all(
+    uniqueCandidates.map(async candidate => ({
+      candidate,
+      isEmpty: await isDirectoryEmpty(candidate),
+    })),
+  )
+
+  const available = emptinessChecks.find(result => result.isEmpty)
+  if (available) {
+    return available.candidate
+  }
+
+  throw new Error('Unable to allocate a unique worktree directory')
 }
 
 export async function createGitWorktree(input: CreateGitWorktreeInput): Promise<GitWorktreeEntry> {
   const normalizedRepoPath = input.repoPath.trim()
-  const normalizedWorktreePath = input.worktreePath.trim()
+  const normalizedWorktreesRoot = input.worktreesRoot.trim()
 
   if (normalizedRepoPath.length === 0) {
     throw new Error('createGitWorktree requires repoPath')
@@ -285,34 +269,24 @@ export async function createGitWorktree(input: CreateGitWorktreeInput): Promise<
     throw new Error('createGitWorktree requires an absolute repoPath')
   }
 
-  if (normalizedWorktreePath.length === 0) {
-    throw new Error('createGitWorktree requires worktreePath')
+  if (normalizedWorktreesRoot.length === 0) {
+    throw new Error('createGitWorktree requires worktreesRoot')
   }
 
-  if (!isAbsolute(normalizedWorktreePath)) {
-    throw new Error('createGitWorktree requires an absolute worktreePath')
+  if (!isAbsolute(normalizedWorktreesRoot)) {
+    throw new Error('createGitWorktree requires an absolute worktreesRoot')
   }
 
   await ensureGitRepo(normalizedRepoPath)
 
-  const resolvedWorktreePath = resolve(normalizedWorktreePath)
-
   const worktreesSnapshot = await listGitWorktrees({ repoPath: normalizedRepoPath })
-
-  await mkdir(dirname(resolvedWorktreePath), { recursive: true })
-  const comparableWorktreePath = await toCanonicalPathEvenIfMissing(resolvedWorktreePath)
-
-  const alreadyUsedPath = worktreesSnapshot.worktrees.some(
-    entry => entry.path === comparableWorktreePath,
-  )
-  if (alreadyUsedPath) {
-    throw new Error('Worktree path is already registered in git worktrees')
-  }
 
   const branchName = input.branchMode.name.trim()
   if (branchName.length === 0) {
     throw new Error('Branch name cannot be empty')
   }
+
+  await assertValidGitBranchName(normalizedRepoPath, branchName, 'Branch name')
 
   const branchesSnapshot = await listGitBranches({ repoPath: normalizedRepoPath })
   const branchExists = branchesSnapshot.branches.includes(branchName)
@@ -329,10 +303,13 @@ export async function createGitWorktree(input: CreateGitWorktreeInput): Promise<
     throw new Error(`Branch "${branchName}" is already checked out at ${alreadyCheckedOut.path}`)
   }
 
-  const empty = await isDirectoryEmpty(comparableWorktreePath)
-  if (!empty) {
-    throw new Error('Worktree directory already exists and is not empty')
-  }
+  await mkdir(normalizedWorktreesRoot, { recursive: true })
+
+  const comparableWorktreePath = await allocateWorktreePath({
+    worktreesRoot: normalizedWorktreesRoot,
+    branchName,
+    existingWorktrees: worktreesSnapshot.worktrees,
+  })
 
   const args =
     input.branchMode.kind === 'new'
@@ -351,7 +328,9 @@ export async function createGitWorktree(input: CreateGitWorktreeInput): Promise<
   }
 }
 
-export async function removeGitWorktree(input: RemoveGitWorktreeInput): Promise<void> {
+export async function removeGitWorktree(
+  input: RemoveGitWorktreeInput,
+): Promise<RemoveGitWorktreeResult> {
   const normalizedRepoPath = input.repoPath.trim()
   const normalizedWorktreePath = input.worktreePath.trim()
 
@@ -397,5 +376,88 @@ export async function removeGitWorktree(input: RemoveGitWorktreeInput): Promise<
   const result = await runGit(args, normalizedRepoPath)
   if (result.exitCode !== 0) {
     throw new Error(normalizeOptionalText(result.stderr) ?? 'git worktree remove failed')
+  }
+
+  let deletedBranchName: string | null = null
+  let branchDeleteError: string | null = null
+
+  if (input.deleteBranch === true && targetWorktree.branch) {
+    const deleteBranchResult = await runGit(
+      ['branch', '-D', targetWorktree.branch],
+      normalizedRepoPath,
+    )
+    if (deleteBranchResult.exitCode === 0) {
+      deletedBranchName = targetWorktree.branch
+    } else {
+      branchDeleteError =
+        normalizeOptionalText(deleteBranchResult.stderr) ??
+        `Failed to delete branch "${targetWorktree.branch}"`
+    }
+  }
+
+  return {
+    deletedBranchName,
+    branchDeleteError,
+  }
+}
+
+export async function renameGitBranch(input: RenameGitBranchInput): Promise<void> {
+  const normalizedRepoPath = input.repoPath.trim()
+  const normalizedWorktreePath = input.worktreePath.trim()
+  const currentName = input.currentName.trim()
+  const nextName = input.nextName.trim()
+
+  if (normalizedRepoPath.length === 0) {
+    throw new Error('renameGitBranch requires repoPath')
+  }
+
+  if (!isAbsolute(normalizedRepoPath)) {
+    throw new Error('renameGitBranch requires an absolute repoPath')
+  }
+
+  if (normalizedWorktreePath.length === 0) {
+    throw new Error('renameGitBranch requires worktreePath')
+  }
+
+  if (!isAbsolute(normalizedWorktreePath)) {
+    throw new Error('renameGitBranch requires an absolute worktreePath')
+  }
+
+  if (currentName.length === 0) {
+    throw new Error('Current branch name cannot be empty')
+  }
+
+  if (nextName.length === 0) {
+    throw new Error('Next branch name cannot be empty')
+  }
+
+  await ensureGitRepo(normalizedRepoPath)
+  await assertValidGitBranchName(normalizedRepoPath, nextName, 'Next branch name')
+
+  const comparableWorktreePath = await toCanonicalPathEvenIfMissing(normalizedWorktreePath)
+  const worktreesSnapshot = await listGitWorktrees({ repoPath: normalizedRepoPath })
+  const targetWorktree =
+    worktreesSnapshot.worktrees.find(entry => entry.path === comparableWorktreePath) ?? null
+
+  if (!targetWorktree) {
+    throw new Error('Worktree path is not registered in git worktrees')
+  }
+
+  if (targetWorktree.branch !== currentName) {
+    throw new Error('Current branch does not match the selected worktree')
+  }
+
+  const branchesSnapshot = await listGitBranches({ repoPath: normalizedRepoPath })
+  if (!branchesSnapshot.branches.includes(currentName)) {
+    throw new Error(`Branch "${currentName}" does not exist`)
+  }
+
+  if (branchesSnapshot.branches.includes(nextName)) {
+    throw new Error(`Branch "${nextName}" already exists`)
+  }
+
+  const result = await runGit(['branch', '-m', currentName, nextName], comparableWorktreePath)
+  if (result.exitCode !== 0) {
+    throw new Error(normalizeOptionalText(result.stderr) ?? 'git branch rename failed')
   }
 }

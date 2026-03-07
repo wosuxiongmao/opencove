@@ -12,11 +12,14 @@ import {
   type NodeTypes,
   type Viewport,
 } from '@xyflow/react'
+import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/types/api'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../types'
 import { MAX_CANVAS_ZOOM, MIN_CANVAS_ZOOM } from './constants'
 import type {
   ContextMenuState,
+  SpaceActionMenuState,
   SpaceVisual,
+  SpaceWorktreeDialogState,
   WorkspaceCanvasProps,
   TaskAssignerState,
   TaskCreatorState,
@@ -25,6 +28,7 @@ import type {
 } from './types'
 import { WorkspaceContextMenu } from './view/WorkspaceContextMenu'
 import { WorkspaceMinimapDock } from './view/WorkspaceMinimapDock'
+import { WorkspaceSpaceActionMenu } from './view/WorkspaceSpaceActionMenu'
 import { WorkspaceSpaceRegionsOverlay } from './view/WorkspaceSpaceRegionsOverlay'
 import { WorkspaceSpaceSwitcher } from './view/WorkspaceSpaceSwitcher'
 import { TaskAssignerWindow } from './windows/TaskAssignerWindow'
@@ -140,14 +144,22 @@ interface WorkspaceCanvasViewProps {
   agentSettings: WorkspaceCanvasProps['agentSettings']
   workspacePath: string
 
-  spaceWorktreeSpaceId: string | null
+  spaceActionMenu: SpaceActionMenuState | null
+  availablePathOpeners: WorkspacePathOpener[]
+  openSpaceActionMenu: (spaceId: string, anchor: { x: number; y: number }) => void
+  closeSpaceActionMenu: () => void
+  copySpacePath: (spaceId: string) => Promise<void> | void
+  openSpacePath: (spaceId: string, openerId: WorkspacePathOpenerId) => Promise<void> | void
+
+  spaceWorktreeDialog: SpaceWorktreeDialogState | null
   worktreesRoot: string
-  openSpaceWorktree: (spaceId: string) => void
+  openSpaceCreateWorktree: (spaceId: string) => void
+  openSpaceArchive: (spaceId: string) => void
   closeSpaceWorktree: () => void
   updateSpaceDirectory: (
     spaceId: string,
     directoryPath: string,
-    options?: { markNodeDirectoryMismatch?: boolean },
+    options?: { markNodeDirectoryMismatch?: boolean; archiveSpace?: boolean },
   ) => void
   getSpaceBlockingNodes: (spaceId: string) => { agentNodeIds: string[]; terminalNodeIds: string[] }
   closeNodesById: (nodeIds: string[]) => Promise<void>
@@ -229,14 +241,46 @@ export function WorkspaceCanvasView({
   confirmTaskDelete,
   agentSettings,
   workspacePath,
-  spaceWorktreeSpaceId,
+  spaceActionMenu,
+  availablePathOpeners,
+  openSpaceActionMenu,
+  closeSpaceActionMenu,
+  copySpacePath,
+  openSpacePath,
+  spaceWorktreeDialog,
   worktreesRoot,
-  openSpaceWorktree,
+  openSpaceCreateWorktree,
+  openSpaceArchive,
   closeSpaceWorktree,
   updateSpaceDirectory,
   getSpaceBlockingNodes,
   closeNodesById,
 }: WorkspaceCanvasViewProps): React.JSX.Element {
+  const activeMenuSpace = React.useMemo(
+    () =>
+      spaceActionMenu
+        ? (spaces.find(candidate => candidate.id === spaceActionMenu.spaceId) ?? null)
+        : null,
+    [spaceActionMenu, spaces],
+  )
+
+  const normalizedWorkspacePath = React.useMemo(
+    () => normalizeComparablePath(workspacePath),
+    [workspacePath],
+  )
+
+  const activeMenuSpacePath = React.useMemo(() => {
+    if (!activeMenuSpace) {
+      return workspacePath
+    }
+
+    const trimmed = activeMenuSpace.directoryPath.trim()
+    return trimmed.length > 0 ? trimmed : workspacePath
+  }, [activeMenuSpace, workspacePath])
+
+  const isActiveMenuSpaceOnWorkspaceRoot =
+    normalizeComparablePath(activeMenuSpacePath) === normalizedWorkspacePath
+
   return (
     <div
       ref={canvasRef}
@@ -297,9 +341,7 @@ export function WorkspaceCanvasView({
           commitSpaceRename={commitSpaceRename}
           cancelSpaceRename={cancelSpaceRename}
           startSpaceRename={startSpaceRename}
-          onOpenSpaceMenu={spaceId => {
-            openSpaceWorktree(spaceId)
-          }}
+          onOpenSpaceMenu={openSpaceActionMenu}
         />
 
         {selectedNodeCount > 0 ? (
@@ -334,6 +376,34 @@ export function WorkspaceCanvasView({
         openAgentLauncher={openAgentLauncher}
         createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
         clearNodeSelection={clearNodeSelection}
+      />
+
+      <WorkspaceSpaceActionMenu
+        menu={spaceActionMenu}
+        availableOpeners={availablePathOpeners}
+        canCreateWorktree={activeMenuSpace !== null && isActiveMenuSpaceOnWorkspaceRoot}
+        canArchive={activeMenuSpace !== null && !isActiveMenuSpaceOnWorkspaceRoot}
+        closeMenu={closeSpaceActionMenu}
+        onCreateWorktree={() => {
+          if (activeMenuSpace) {
+            openSpaceCreateWorktree(activeMenuSpace.id)
+          }
+        }}
+        onArchive={() => {
+          if (activeMenuSpace) {
+            openSpaceArchive(activeMenuSpace.id)
+          }
+        }}
+        onCopyPath={() => {
+          if (activeMenuSpace) {
+            return copySpacePath(activeMenuSpace.id)
+          }
+        }}
+        onOpenPath={openerId => {
+          if (activeMenuSpace) {
+            return openSpacePath(activeMenuSpace.id, openerId)
+          }
+        }}
       />
 
       <TaskCreatorWindow
@@ -374,7 +444,8 @@ export function WorkspaceCanvasView({
       />
 
       <SpaceWorktreeWindow
-        spaceId={spaceWorktreeSpaceId}
+        spaceId={spaceWorktreeDialog?.spaceId ?? null}
+        initialViewMode={spaceWorktreeDialog?.initialViewMode ?? 'home'}
         spaces={spaces}
         nodes={nodes}
         workspacePath={workspacePath}
@@ -389,4 +460,8 @@ export function WorkspaceCanvasView({
       />
     </div>
   )
+}
+
+function normalizeComparablePath(pathValue: string): string {
+  return pathValue.trim().replace(/[\\/]+$/, '')
 }

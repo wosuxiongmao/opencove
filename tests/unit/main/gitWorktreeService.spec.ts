@@ -1,9 +1,9 @@
+import { execFile } from 'node:child_process'
 import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
-import { execFile } from 'node:child_process'
+import { basename, join } from 'node:path'
 import { promisify } from 'node:util'
+import { afterEach, describe, expect, it } from 'vitest'
 
 const execFileAsync = promisify(execFile)
 
@@ -46,81 +46,122 @@ describe('GitWorktreeService', () => {
     repoDir = ''
   })
 
-  it('lists worktrees and creates a new worktree under .cove/worktrees', async () => {
+  it('lists worktrees and creates a new worktree under the configured root', async () => {
     repoDir = await createTempRepo()
     const canonicalRepoDir = await realpath(repoDir)
+    const worktreesRoot = join(repoDir, '.cove', 'worktrees')
+    await mkdir(worktreesRoot, { recursive: true })
 
-    const { listGitWorktrees, createGitWorktree } =
+    const { createGitWorktree, listGitWorktrees } =
       await import('../../../src/main/infrastructure/worktree/GitWorktreeService')
 
     const initial = await listGitWorktrees({ repoPath: canonicalRepoDir })
     expect(initial.worktrees.some(entry => entry.path === canonicalRepoDir)).toBe(true)
 
-    const worktreesRoot = join(repoDir, '.cove', 'worktrees')
-    await mkdir(worktreesRoot, { recursive: true })
-
-    const createdPath = join(worktreesRoot, 'space-a')
-
     const created = await createGitWorktree({
       repoPath: canonicalRepoDir,
-      worktreePath: createdPath,
+      worktreesRoot,
       branchMode: { kind: 'new', name: 'space-a', startPoint: 'HEAD' },
     })
 
-    expect(created.path).toBe(await realpath(createdPath))
     expect(created.branch).toBe('space-a')
+    expect(created.path.startsWith(await realpath(worktreesRoot))).toBe(true)
+    expect(basename(created.path)).toMatch(/^space-a--[0-9a-f]{8}$/)
 
     const after = await listGitWorktrees({ repoPath: canonicalRepoDir })
     expect(after.worktrees.some(entry => entry.path === created.path)).toBe(true)
   })
 
-  it('removes a created worktree from git worktree list', async () => {
+  it('removes a created worktree and optionally deletes its branch', async () => {
     repoDir = await createTempRepo()
     const canonicalRepoDir = await realpath(repoDir)
-
-    const { createGitWorktree, listGitWorktrees, removeGitWorktree } =
-      await import('../../../src/main/infrastructure/worktree/GitWorktreeService')
-
     const worktreesRoot = join(repoDir, '.cove', 'worktrees')
     await mkdir(worktreesRoot, { recursive: true })
 
-    const createdPath = join(worktreesRoot, 'space-remove')
+    const { createGitWorktree, listGitBranches, listGitWorktrees, removeGitWorktree } =
+      await import('../../../src/main/infrastructure/worktree/GitWorktreeService')
+
     const created = await createGitWorktree({
       repoPath: canonicalRepoDir,
-      worktreePath: createdPath,
+      worktreesRoot,
       branchMode: { kind: 'new', name: 'space-remove', startPoint: 'HEAD' },
     })
 
-    await removeGitWorktree({
+    const removed = await removeGitWorktree({
       repoPath: canonicalRepoDir,
       worktreePath: created.path,
       force: false,
+      deleteBranch: true,
     })
 
-    const after = await listGitWorktrees({ repoPath: canonicalRepoDir })
-    expect(after.worktrees.some(entry => entry.path === created.path)).toBe(false)
+    expect(removed).toEqual({
+      deletedBranchName: 'space-remove',
+      branchDeleteError: null,
+    })
+
+    const branchesAfter = await listGitBranches({ repoPath: canonicalRepoDir })
+    expect(branchesAfter.branches).not.toContain('space-remove')
+
+    const worktreesAfter = await listGitWorktrees({ repoPath: canonicalRepoDir })
+    expect(worktreesAfter.worktrees.some(entry => entry.path === created.path)).toBe(false)
+  })
+
+  it('renames the branch checked out by a worktree', async () => {
+    repoDir = await createTempRepo()
+    const canonicalRepoDir = await realpath(repoDir)
+    const worktreesRoot = join(repoDir, '.cove', 'worktrees')
+    await mkdir(worktreesRoot, { recursive: true })
+
+    const { createGitWorktree, listGitBranches, listGitWorktrees, renameGitBranch } =
+      await import('../../../src/main/infrastructure/worktree/GitWorktreeService')
+
+    const created = await createGitWorktree({
+      repoPath: canonicalRepoDir,
+      worktreesRoot,
+      branchMode: { kind: 'new', name: 'space-old', startPoint: 'HEAD' },
+    })
+
+    await renameGitBranch({
+      repoPath: canonicalRepoDir,
+      worktreePath: created.path,
+      currentName: 'space-old',
+      nextName: 'space-new',
+    })
+
+    const branchesAfter = await listGitBranches({ repoPath: canonicalRepoDir })
+    expect(branchesAfter.branches).toContain('space-new')
+    expect(branchesAfter.branches).not.toContain('space-old')
+
+    const worktreesAfter = await listGitWorktrees({ repoPath: canonicalRepoDir })
+    expect(worktreesAfter.worktrees).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: created.path,
+          branch: 'space-new',
+        }),
+      ]),
+    )
   })
 
   it('rejects adding a worktree for a branch already checked out elsewhere', async () => {
     repoDir = await createTempRepo()
     const canonicalRepoDir = await realpath(repoDir)
+    const worktreesRoot = join(repoDir, '.cove', 'worktrees')
+    await mkdir(worktreesRoot, { recursive: true })
 
     const { createGitWorktree } =
       await import('../../../src/main/infrastructure/worktree/GitWorktreeService')
 
-    const worktreesRoot = join(repoDir, '.cove', 'worktrees')
-    await mkdir(worktreesRoot, { recursive: true })
-
     await createGitWorktree({
       repoPath: canonicalRepoDir,
-      worktreePath: join(worktreesRoot, 'space-b'),
+      worktreesRoot,
       branchMode: { kind: 'new', name: 'space-b', startPoint: 'HEAD' },
     })
 
     await expect(
       createGitWorktree({
         repoPath: canonicalRepoDir,
-        worktreePath: join(worktreesRoot, 'space-b-2'),
+        worktreesRoot,
         branchMode: { kind: 'existing', name: 'space-b' },
       }),
     ).rejects.toThrow(/already checked out/i)

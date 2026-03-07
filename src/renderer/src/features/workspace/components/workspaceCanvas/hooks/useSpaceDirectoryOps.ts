@@ -25,13 +25,17 @@ export function useWorkspaceCanvasSpaceDirectoryOps({
   updateSpaceDirectory: (
     spaceId: string,
     directoryPath: string,
-    options?: { markNodeDirectoryMismatch?: boolean },
+    options?: { markNodeDirectoryMismatch?: boolean; archiveSpace?: boolean },
   ) => void
   getSpaceBlockingNodes: (spaceId: string) => { agentNodeIds: string[]; terminalNodeIds: string[] }
   closeNodesById: (nodeIds: string[]) => Promise<void>
 } {
   const updateSpaceDirectory = useCallback(
-    (spaceId: string, directoryPath: string, options?: { markNodeDirectoryMismatch?: boolean }) => {
+    (
+      spaceId: string,
+      directoryPath: string,
+      options?: { markNodeDirectoryMismatch?: boolean; archiveSpace?: boolean },
+    ) => {
       const targetSpace = spacesRef.current.find(space => space.id === spaceId) ?? null
       if (!targetSpace) {
         return
@@ -40,20 +44,28 @@ export function useWorkspaceCanvasSpaceDirectoryOps({
       const previousDirectoryPath =
         targetSpace.directoryPath.trim().length > 0 ? targetSpace.directoryPath : workspacePath
       const markNodeDirectoryMismatch = options?.markNodeDirectoryMismatch === true
+      const archiveSpace = options?.archiveSpace === true
       const targetNodeIds = new Set(targetSpace.nodeIds)
 
-      const nextSpaces = spacesRef.current.map(space =>
-        space.id === spaceId
-          ? {
-              ...space,
-              directoryPath,
-            }
-          : space,
-      )
+      const nextSpaces = archiveSpace
+        ? spacesRef.current.filter(space => space.id !== spaceId)
+        : spacesRef.current.map(space =>
+            space.id === spaceId
+              ? {
+                  ...space,
+                  directoryPath,
+                }
+              : space,
+          )
 
       onSpacesChange(nextSpaces)
 
-      if (markNodeDirectoryMismatch && targetNodeIds.size > 0) {
+      if (archiveSpace && targetNodeIds.size > 0) {
+        setNodes(prevNodes => {
+          const nextNodes = prevNodes.filter(node => !targetNodeIds.has(node.id))
+          return nextNodes.length === prevNodes.length ? prevNodes : nextNodes
+        })
+      } else if (markNodeDirectoryMismatch && targetNodeIds.size > 0) {
         setNodes(
           prevNodes => {
             let hasChanged = false

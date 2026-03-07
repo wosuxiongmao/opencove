@@ -1,6 +1,9 @@
 export const IPC_CHANNELS = {
   workspaceSelectDirectory: 'workspace:select-directory',
   workspaceEnsureDirectory: 'workspace:ensure-directory',
+  workspaceCopyPath: 'workspace:copy-path',
+  workspaceListPathOpeners: 'workspace:list-path-openers',
+  workspaceOpenPath: 'workspace:open-path',
   persistenceReadWorkspaceStateRaw: 'persistence:read-workspace-state-raw',
   persistenceWriteWorkspaceStateRaw: 'persistence:write-workspace-state-raw',
   persistenceReadAppState: 'persistence:read-app-state',
@@ -11,6 +14,7 @@ export const IPC_CHANNELS = {
   worktreeListWorktrees: 'worktree:list-worktrees',
   worktreeCreate: 'worktree:create',
   worktreeRemove: 'worktree:remove',
+  worktreeRenameBranch: 'worktree:rename-branch',
   worktreeSuggestNames: 'worktree:suggest-names',
   ptySpawn: 'pty:spawn',
   ptyWrite: 'pty:write',

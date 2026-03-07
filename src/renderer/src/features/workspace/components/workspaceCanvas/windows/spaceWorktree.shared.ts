@@ -1,7 +1,7 @@
-import type { CreateGitWorktreeBranchMode, GitWorktreeInfo } from '@shared/types/api'
+import type { CreateGitWorktreeBranchMode } from '@shared/types/api'
 
 export type BranchMode = 'new' | 'existing'
-export type SpaceWorktreeViewMode = 'home' | 'switch' | 'create' | 'detach' | 'detach-confirm'
+export type SpaceWorktreeViewMode = 'home' | 'create' | 'archive'
 
 export interface BlockingNodesSnapshot {
   agentNodeIds: string[]
@@ -10,24 +10,26 @@ export interface BlockingNodesSnapshot {
 
 export interface UpdateSpaceDirectoryOptions {
   markNodeDirectoryMismatch?: boolean
+  archiveSpace?: boolean
 }
 
 export type PendingOperation =
-  | { kind: 'unbind' }
-  | { kind: 'bind'; worktree: GitWorktreeInfo }
   | {
       kind: 'create'
-      worktreePath: string
+      worktreesRoot: string
       branchMode: CreateGitWorktreeBranchMode
     }
   | {
-      kind: 'detach-remove'
+      kind: 'archive'
       worktreePath: string
+      deleteBranch: boolean
+      archiveSpace: boolean
       force: boolean
     }
 
 const WORKTREE_API_UNAVAILABLE_ERROR =
   'Worktree API is unavailable. Please restart Cove and try again.'
+const DISALLOWED_BRANCH_CHARACTERS = [' ', '~', '^', ':', '?', '*', '[', '\\']
 
 type WorktreeApiClient = Window['coveApi']['worktree']
 
@@ -71,21 +73,62 @@ export function resolveWorktreesRoot(workspacePath: string, worktreesRoot: strin
   return `${base}/${normalizedCustom}`
 }
 
-export function resolveWorktreePath(worktreesRoot: string, worktreeName: string): string {
-  const base = worktreesRoot.replace(/[\\/]+$/, '')
-  const normalizedName = worktreeName.trim().replace(/^[./\\]+/, '')
-  return `${base}/${normalizedName}`
+function hasAsciiControlCharacter(value: string): boolean {
+  return [...value].some(character => {
+    const code = character.charCodeAt(0)
+    return code < 0x20 || code === 0x7f
+  })
 }
 
-export function isSafeWorktreeName(value: string): boolean {
+export function getBranchNameValidationError(value: string): string | null {
   const trimmed = value.trim()
   if (trimmed.length === 0) {
-    return false
+    return 'Branch name cannot be empty.'
+  }
+
+  if (trimmed === '@') {
+    return 'Branch name cannot be "@".'
   }
 
   if (trimmed.includes('..')) {
-    return false
+    return 'Branch name cannot contain "..".'
   }
 
-  return !/[\\/]/.test(trimmed)
+  if (trimmed.includes('@{')) {
+    return 'Branch name cannot contain "@{".'
+  }
+
+  if (
+    hasAsciiControlCharacter(trimmed) ||
+    DISALLOWED_BRANCH_CHARACTERS.some(character => trimmed.includes(character))
+  ) {
+    return 'Branch name contains unsupported characters.'
+  }
+
+  if (trimmed.startsWith('/') || trimmed.endsWith('/')) {
+    return 'Branch name cannot start or end with "/".'
+  }
+
+  if (trimmed.includes('//')) {
+    return 'Branch name cannot contain consecutive "/".'
+  }
+
+  if (trimmed.endsWith('.')) {
+    return 'Branch name cannot end with ".".'
+  }
+
+  const segments = trimmed.split('/')
+  if (segments.some(segment => segment.length === 0)) {
+    return 'Branch name cannot contain empty path segments.'
+  }
+
+  if (segments.some(segment => segment.startsWith('.'))) {
+    return 'Branch name segments cannot start with ".".'
+  }
+
+  if (segments.some(segment => segment.endsWith('.lock'))) {
+    return 'Branch name segments cannot end with ".lock".'
+  }
+
+  return null
 }

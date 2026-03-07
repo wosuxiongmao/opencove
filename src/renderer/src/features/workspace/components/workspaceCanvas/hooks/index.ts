@@ -1,0 +1,22 @@
+export { useWorkspaceCanvasAgentNodeLifecycle } from './useAgentNodeLifecycle'
+export { useWorkspaceCanvasAgentLauncher } from './useAgentLauncher'
+export {
+  useWorkspaceCanvasActionRefs,
+  useWorkspaceCanvasSyncActionRefs,
+  type WorkspaceCanvasActionRefs,
+} from './useActionRefs'
+export { useWorkspaceCanvasApplyNodeChanges } from './useApplyNodeChanges'
+export { useWorkspaceCanvasState } from './useCanvasState'
+export { useWorkspaceCanvasComposedNodeTypes } from './useCanvasNodeTypes'
+export { useWorkspaceCanvasTaskWindows } from './useCanvasTaskWindows'
+export { useWorkspaceCanvasViewModel } from './useCanvasViewModel'
+export { useWorkspaceCanvasInteractions } from './useInteractions'
+export { useWorkspaceCanvasLifecycle } from './useLifecycle'
+export { useWorkspaceCanvasNodesStore } from './useNodesStore'
+export { useWorkspaceCanvasPtyTaskCompletion } from './usePtyTaskCompletion'
+export { useWorkspaceCanvasSpaceDirectoryOps } from './useSpaceDirectoryOps'
+export { useWorkspaceCanvasSpaceDrag } from './useSpaceDrag'
+export { useWorkspaceCanvasSpaceOwnership } from './useSpaceOwnership'
+export { useWorkspaceCanvasSpaces } from './useSpaces'
+export { useWorkspaceCanvasTaskActions } from './useTaskActions'
+export { useWorkspaceCanvasTrackpadGestures } from './useTrackpadGestures'

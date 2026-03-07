@@ -47,6 +47,17 @@ export interface SelectionContextMenuState {
 
 export type ContextMenuState = PaneContextMenuState | SelectionContextMenuState
 
+export interface SpaceActionMenuState {
+  spaceId: string
+  x: number
+  y: number
+}
+
+export interface SpaceWorktreeDialogState {
+  spaceId: string
+  initialViewMode: 'home' | 'create' | 'archive'
+}
+
 export interface SelectionDraftState {
   startX: number
   startY: number
@@ -56,6 +67,7 @@ export interface SelectionDraftState {
   selectedNodeIdsAtStart: string[]
   selectedSpaceIdsAtStart: string[]
   startSpaceId: string | null
+  phase: 'active' | 'settling'
 }
 
 export interface EmptySelectionPromptState {
