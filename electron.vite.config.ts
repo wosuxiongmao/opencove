@@ -54,7 +54,7 @@ export default defineConfig({
       outDir: 'out/main',
       rollupOptions: {
         input: {
-          index: resolve(__dirname, 'src/main/index.ts'),
+          index: resolve(__dirname, 'src/app/main/index.ts'),
         },
       },
     },
@@ -65,24 +65,27 @@ export default defineConfig({
       outDir: 'out/preload',
       rollupOptions: {
         input: {
-          index: resolve(__dirname, 'src/preload/index.ts'),
+          index: resolve(__dirname, 'src/app/preload/index.ts'),
         },
       },
     },
   },
   renderer: {
-    root: 'src/renderer',
+    root: 'src/app/renderer',
     build: {
       outDir: 'out/renderer',
       rollupOptions: {
         input: {
-          index: resolve(__dirname, 'src/renderer/index.html'),
+          index: resolve(__dirname, 'src/app/renderer/index.html'),
         },
       },
     },
     plugins: [coveCspPlugin(), tailwindcss(), react()],
     resolve: {
       alias: {
+        '@app': resolve(__dirname, 'src/app'),
+        '@contexts': resolve(__dirname, 'src/contexts'),
+        '@platform': resolve(__dirname, 'src/platform'),
         '@renderer': resolve(__dirname, 'src/renderer/src'),
         '@shared': resolve(__dirname, 'src/shared'),
       },

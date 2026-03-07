@@ -56,6 +56,11 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': '/src',
+      '@app': '/src/app',
+      '@contexts': '/src/contexts',
+      '@platform': '/src/platform',
+      '@renderer': '/src/renderer/src',
+      '@shared': '/src/shared',
     },
   },
 })
