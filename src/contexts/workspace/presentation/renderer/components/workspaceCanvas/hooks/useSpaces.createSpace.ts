@@ -25,6 +25,7 @@ export function useWorkspaceCanvasCreateSpace({
   setContextMenu,
   setEmptySelectionPrompt,
   cancelSpaceRename,
+  onShowMessage,
 }: {
   workspacePath: string
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
@@ -36,6 +37,7 @@ export function useWorkspaceCanvasCreateSpace({
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
   setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
   cancelSpaceRename: () => void
+  onShowMessage?: (message: string) => void
 }): {
   createSpaceFromSelectedNodes: () => void
 } {
@@ -45,7 +47,7 @@ export function useWorkspaceCanvasCreateSpace({
         nodesRef.current.some(node => node.id === nodeId),
       )
       if (normalizedNodeIds.length === 0) {
-        window.alert('Space must include at least one task or agent.')
+        onShowMessage?.('Space must include at least one task or agent.')
         setContextMenu(null)
         setEmptySelectionPrompt(null)
         return
@@ -58,7 +60,7 @@ export function useWorkspaceCanvasCreateSpace({
         workspacePath,
       )
       if (validationError) {
-        window.alert(validationError)
+        onShowMessage?.(validationError)
         return
       }
 
@@ -294,6 +296,7 @@ export function useWorkspaceCanvasCreateSpace({
       cancelSpaceRename,
       nodesRef,
       onRequestPersistFlush,
+      onShowMessage,
       onSpacesChange,
       setContextMenu,
       setEmptySelectionPrompt,

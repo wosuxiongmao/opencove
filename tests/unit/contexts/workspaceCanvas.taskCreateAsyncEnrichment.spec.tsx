@@ -119,12 +119,6 @@ describe('WorkspaceCanvas task creation async enrichment', () => {
         }),
     )
 
-    Object.defineProperty(window, 'alert', {
-      configurable: true,
-      writable: true,
-      value: vi.fn(),
-    })
-
     Object.defineProperty(window, 'coveApi', {
       configurable: true,
       writable: true,

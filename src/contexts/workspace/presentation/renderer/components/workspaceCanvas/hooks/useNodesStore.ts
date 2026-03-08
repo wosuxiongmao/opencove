@@ -21,6 +21,7 @@ export function useWorkspaceCanvasNodesStore({
   onNodesChange,
   onSpacesChange,
   onRequestPersistFlush,
+  onShowMessage,
   defaultTerminalWindowScalePercent,
 }: UseWorkspaceCanvasNodesStoreParams): UseWorkspaceCanvasNodesStoreResult {
   const nodesRef = useRef(nodes)
@@ -334,6 +335,7 @@ export function useWorkspaceCanvasNodesStore({
     defaultTerminalWindowScalePercent,
     nodesRef,
     onRequestPersistFlush,
+    onShowMessage,
     pushBlockingWindowsRight,
     setNodes,
   })

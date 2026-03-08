@@ -6,6 +6,7 @@ import { WorkspaceCanvasView } from './workspaceCanvas/WorkspaceCanvasView'
 import type { WorkspaceCanvasProps } from './workspaceCanvas/types'
 function WorkspaceCanvasInner({
   workspaceId,
+  onShowMessage,
   workspacePath,
   worktreesRoot,
   nodes,
@@ -81,6 +82,7 @@ function WorkspaceCanvasInner({
     onNodesChange,
     onSpacesChange,
     onRequestPersistFlush,
+    onShowMessage,
     defaultTerminalWindowScalePercent: agentSettings.defaultTerminalWindowScalePercent,
   })
   const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } =
@@ -120,6 +122,7 @@ function WorkspaceCanvasInner({
     onRequestPersistFlush,
     setContextMenu,
     setEmptySelectionPrompt,
+    onShowMessage,
   })
   const { spaceFramePreview, handleSpaceDragHandlePointerDown } =
     workspaceCanvasHooks.useWorkspaceCanvasSpaceDrag({
@@ -149,6 +152,7 @@ function WorkspaceCanvasInner({
     setNodes,
     onSpacesChange,
     onRequestPersistFlush,
+    onShowMessage,
   })
   const { buildAgentNodeTitle, launchAgentInNode } =
     workspaceCanvasHooks.useWorkspaceCanvasAgentNodeLifecycle({
@@ -166,6 +170,7 @@ function WorkspaceCanvasInner({
     spacesRef,
     onSpacesChange,
     onRequestPersistFlush,
+    onShowMessage,
     contextMenu,
     setContextMenu,
     createNodeForSession,

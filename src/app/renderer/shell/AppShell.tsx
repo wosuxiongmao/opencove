@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { SettingsPanel } from '@contexts/settings/presentation/renderer/SettingsPanel'
 import { AGENT_PROVIDER_LABEL, resolveAgentModel } from '@contexts/settings/domain/agentSettings'
 import { WorkspaceCanvas } from '@contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
@@ -75,6 +75,26 @@ export default function App(): React.JSX.Element {
     () => workspaces.find(workspace => workspace.id === activeWorkspaceId) ?? null,
     [activeWorkspaceId, workspaces],
   )
+
+  const [floatingMessage, setFloatingMessage] = useState<{ id: number; text: string } | null>(null)
+
+  useEffect(() => {
+    if (!floatingMessage) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setFloatingMessage(current => (current?.id === floatingMessage.id ? null : current))
+    }, 3200)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [floatingMessage])
+
+  const handleShowMessage = useCallback((message: string): void => {
+    setFloatingMessage({ id: Date.now(), text: message })
+  }, [])
 
   const activeProviderLabel = AGENT_PROVIDER_LABEL[agentSettings.defaultProvider]
   const activeProviderModel =
@@ -380,6 +400,7 @@ export default function App(): React.JSX.Element {
           {activeWorkspace ? (
             <WorkspaceCanvas
               workspaceId={activeWorkspace.id}
+              onShowMessage={handleShowMessage}
               workspacePath={activeWorkspace.path}
               worktreesRoot={activeWorkspace.worktreesRoot}
               nodes={activeWorkspace.nodes}
@@ -416,6 +437,13 @@ export default function App(): React.JSX.Element {
           )}
         </main>
       </div>
+
+      {floatingMessage ? (
+        <div className="app-message" data-testid="app-message" role="status" aria-live="polite">
+          <span className="app-message__label">Notice</span>
+          <span className="app-message__text">{floatingMessage.text}</span>
+        </div>
+      ) : null}
 
       {projectContextMenu ? (
         <ProjectContextMenu

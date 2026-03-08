@@ -9,6 +9,7 @@ export interface UseWorkspaceCanvasNodesStoreParams {
   onNodesChange: (nodes: Node<TerminalNodeData>[]) => void
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
+  onShowMessage?: (message: string) => void
   defaultTerminalWindowScalePercent: number
 }
 

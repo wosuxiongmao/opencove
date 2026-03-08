@@ -17,6 +17,7 @@ interface UseWorkspaceCanvasNodeCreationParams {
   defaultTerminalWindowScalePercent: number
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   onRequestPersistFlush?: () => void
+  onShowMessage?: (message: string) => void
   pushBlockingWindowsRight: (desired: Point, size: { width: number; height: number }) => void
   setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
 }
@@ -25,6 +26,7 @@ export function useWorkspaceCanvasNodeCreation({
   defaultTerminalWindowScalePercent,
   nodesRef,
   onRequestPersistFlush,
+  onShowMessage,
   pushBlockingWindowsRight,
   setNodes,
 }: UseWorkspaceCanvasNodeCreationParams): Pick<
@@ -55,7 +57,7 @@ export function useWorkspaceCanvasNodeCreation({
 
       if (canPlace !== true) {
         await window.coveApi.pty.kill({ sessionId })
-        window.alert('当前视图附近没有可用空位，请先移动或关闭部分终端窗口。')
+        onShowMessage?.('当前视图附近没有可用空位，请先移动或关闭部分终端窗口。')
         return null
       }
 
@@ -112,6 +114,7 @@ export function useWorkspaceCanvasNodeCreation({
       onRequestPersistFlush,
       pushBlockingWindowsRight,
       setNodes,
+      onShowMessage,
     ],
   )
 
@@ -125,7 +128,7 @@ export function useWorkspaceCanvasNodeCreation({
       })
 
       if (canPlace !== true) {
-        window.alert('当前视图附近没有可用空位，请先移动或关闭部分窗口。')
+        onShowMessage?.('当前视图附近没有可用空位，请先移动或关闭部分窗口。')
         return null
       }
 
@@ -160,7 +163,7 @@ export function useWorkspaceCanvasNodeCreation({
       onRequestPersistFlush?.()
       return nextNode
     },
-    [nodesRef, onRequestPersistFlush, pushBlockingWindowsRight, setNodes],
+    [nodesRef, onRequestPersistFlush, onShowMessage, pushBlockingWindowsRight, setNodes],
   )
 
   const createTaskNode = useCallback(
@@ -182,7 +185,7 @@ export function useWorkspaceCanvasNodeCreation({
       })
 
       if (canPlace !== true) {
-        window.alert('当前视图附近没有可用空位，请先移动或关闭部分窗口。')
+        onShowMessage?.('当前视图附近没有可用空位，请先移动或关闭部分窗口。')
         return null
       }
 
@@ -228,7 +231,7 @@ export function useWorkspaceCanvasNodeCreation({
       onRequestPersistFlush?.()
       return nextNode
     },
-    [nodesRef, onRequestPersistFlush, pushBlockingWindowsRight, setNodes],
+    [nodesRef, onRequestPersistFlush, onShowMessage, pushBlockingWindowsRight, setNodes],
   )
 
   return {

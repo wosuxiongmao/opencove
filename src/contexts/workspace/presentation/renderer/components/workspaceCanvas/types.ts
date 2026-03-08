@@ -13,6 +13,7 @@ import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 
 export interface WorkspaceCanvasProps {
   workspaceId: string
+  onShowMessage?: (message: string) => void
   workspacePath: string
   worktreesRoot: string
   nodes: Node<TerminalNodeData>[]

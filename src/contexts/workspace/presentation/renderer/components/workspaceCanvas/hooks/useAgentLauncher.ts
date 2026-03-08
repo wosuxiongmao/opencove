@@ -18,6 +18,7 @@ interface UseAgentLauncherParams {
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
+  onShowMessage?: (message: string) => void
   contextMenu: ContextMenuState | null
   setContextMenu: (next: ContextMenuState | null) => void
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
@@ -35,6 +36,7 @@ export function useWorkspaceCanvasAgentLauncher({
   spacesRef,
   onSpacesChange,
   onRequestPersistFlush,
+  onShowMessage,
   contextMenu,
   setContextMenu,
   createNodeForSession,
@@ -182,7 +184,7 @@ export function useWorkspaceCanvasAgentLauncher({
         onSpacesChange(pushedSpaces)
         onRequestPersistFlush?.()
       } catch (error) {
-        window.alert(`Agent 启动失败：${toErrorMessage(error)}`)
+        onShowMessage?.(`Agent 启动失败：${toErrorMessage(error)}`)
       }
     })()
   }, [
@@ -192,6 +194,7 @@ export function useWorkspaceCanvasAgentLauncher({
     createNodeForSession,
     nodesRef,
     onRequestPersistFlush,
+    onShowMessage,
     onSpacesChange,
     setContextMenu,
     setNodes,

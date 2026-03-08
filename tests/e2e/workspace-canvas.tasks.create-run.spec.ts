@@ -67,9 +67,7 @@ test.describe('Workspace Canvas - Tasks (Create & Run)', () => {
       await expect(taskNode).toBeVisible()
       await expect(taskNode.locator('.task-node__title')).toContainText('Auto:')
       await expect(taskNode.locator('.task-node__priority')).toHaveText('MEDIUM')
-      await expect(taskNode.locator('[data-testid="task-node-tags"]')).not.toContainText(
-        'No tags',
-      )
+      await expect(taskNode.locator('[data-testid="task-node-tags"]')).not.toContainText('No tags')
 
       await taskNode.locator('[data-testid="task-node-run-agent"]').click()
 

@@ -25,6 +25,7 @@ export function useWorkspaceCanvasSpaceOwnership({
   setNodes,
   onSpacesChange,
   onRequestPersistFlush,
+  onShowMessage,
 }: {
   workspacePath: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
@@ -34,6 +35,7 @@ export function useWorkspaceCanvasSpaceOwnership({
   setNodes: SetNodes
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
+  onShowMessage?: (message: string) => void
 }): {
   handleNodeDragStart: (
     event: React.MouseEvent,
@@ -196,7 +198,7 @@ export function useWorkspaceCanvasSpaceOwnership({
           )
 
           restoreSelectionAfterDrop({ selectedNodeIds: nodeIds, setNodes })
-          window.alert(validationError)
+          onShowMessage?.(validationError)
           return
         }
       }
@@ -413,6 +415,7 @@ export function useWorkspaceCanvasSpaceOwnership({
     },
     [
       onRequestPersistFlush,
+      onShowMessage,
       onSpacesChange,
       reactFlow,
       resolveSpaceAtPoint,

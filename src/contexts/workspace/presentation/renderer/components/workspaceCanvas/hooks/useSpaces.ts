@@ -23,6 +23,7 @@ interface UseWorkspaceCanvasSpacesParams {
   onRequestPersistFlush?: () => void
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
   setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
+  onShowMessage?: (message: string) => void
 }
 
 export function useWorkspaceCanvasSpaces({
@@ -40,6 +41,7 @@ export function useWorkspaceCanvasSpaces({
   onRequestPersistFlush,
   setContextMenu,
   setEmptySelectionPrompt,
+  onShowMessage,
 }: UseWorkspaceCanvasSpacesParams): {
   editingSpaceId: string | null
   spaceRenameDraft: string
@@ -154,6 +156,7 @@ export function useWorkspaceCanvasSpaces({
     setContextMenu,
     setEmptySelectionPrompt,
     cancelSpaceRename,
+    onShowMessage,
   })
 
   const startSpaceRename = useCallback(

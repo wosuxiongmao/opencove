@@ -107,12 +107,6 @@ describe('WorkspaceCanvas run default agent', () => {
       resumeSessionId: null,
     }))
 
-    Object.defineProperty(window, 'alert', {
-      configurable: true,
-      writable: true,
-      value: vi.fn(),
-    })
-
     Object.defineProperty(window, 'coveApi', {
       configurable: true,
       writable: true,
@@ -208,6 +202,5 @@ describe('WorkspaceCanvas run default agent', () => {
       )
     })
     expect(screen.queryByTestId('workspace-agent-launcher')).toBeNull()
-    expect(window.alert).not.toHaveBeenCalled()
   })
 })

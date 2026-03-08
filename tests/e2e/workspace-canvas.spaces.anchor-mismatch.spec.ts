@@ -199,18 +199,6 @@ test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
       await expect(agentNode).toBeVisible()
       await expect(agentNode.locator('.terminal-node__badge--warning')).toHaveCount(0)
 
-      await window.evaluate(() => {
-        const alerts: string[] = []
-        Object.defineProperty(window, '__coveTestAlerts', {
-          configurable: true,
-          value: alerts,
-          writable: true,
-        })
-        window.alert = (message?: string) => {
-          alerts.push(String(message ?? ''))
-        }
-      })
-
       await dragLocatorTo(window, agentNode.locator('.terminal-node__header'), pane, {
         sourcePosition: { x: 80, y: 16 },
         targetPosition: {
@@ -219,14 +207,9 @@ test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
         },
       })
 
-      await expect
-        .poll(async () => {
-          return await window.evaluate(() => {
-            const alerts = (window as { __coveTestAlerts?: string[] }).__coveTestAlerts ?? []
-            return alerts[0] ?? null
-          })
-        })
-        .toBe('Agent windows cannot enter or leave a space with a different directory.')
+      await expect(window.locator('[data-testid="app-message"]')).toContainText(
+        'Agent windows cannot enter or leave a space with a different directory.',
+      )
 
       await expect(agentNode.locator('.terminal-node__badge--warning')).toHaveCount(0)
 
@@ -444,37 +427,20 @@ test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
       const taskNode = window.locator('.task-node').filter({ hasText: 'blocked-task' }).first()
       await expect(taskNode).toBeVisible()
 
-      await window.evaluate(() => {
-        const alerts: string[] = []
-        Object.defineProperty(window, '__coveTestAlerts', {
-          configurable: true,
-          value: alerts,
-          writable: true,
-        })
-        window.alert = (message?: string) => {
-          alerts.push(String(message ?? ''))
-        }
-      })
-
       await taskNode.click()
       await taskNode.click({ button: 'right' })
       await window.locator('[data-testid="workspace-selection-create-space"]').click()
 
-      await expect
-        .poll(async () => {
-          return await window.evaluate(() => {
-            const alerts = (window as { __coveTestAlerts?: string[] }).__coveTestAlerts ?? []
-            return alerts[0] ?? null
-          })
-        })
-        .toBe('Tasks with active agents cannot be moved between spaces.')
+      await expect(window.locator('[data-testid="app-message"]')).toContainText(
+        'Tasks with active agents cannot be moved between spaces.',
+      )
 
       await expect(window.locator('.workspace-space-region')).toHaveCount(0)
 
       await expect
         .poll(async () => {
           return await window.evaluate(
-            async ({ key, nodeId }) => {
+            async ({ key }) => {
               void key
 
               const raw = await window.coveApi.persistence.readWorkspaceStateRaw()
@@ -495,7 +461,7 @@ test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
                 spaceCount: workspace?.spaces?.length ?? 0,
               }
             },
-            { key: storageKey, nodeId: 'active-task' },
+            { key: storageKey },
           )
         })
         .toEqual({
