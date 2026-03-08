@@ -11,9 +11,16 @@ import type {
 } from '../../types'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 
+export type WorkspaceCanvasMessageTone = 'info' | 'warning' | 'error'
+
+export type ShowWorkspaceCanvasMessage = (
+  message: string,
+  tone?: WorkspaceCanvasMessageTone,
+) => void
+
 export interface WorkspaceCanvasProps {
   workspaceId: string
-  onShowMessage?: (message: string) => void
+  onShowMessage?: ShowWorkspaceCanvasMessage
   workspacePath: string
   worktreesRoot: string
   nodes: Node<TerminalNodeData>[]

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { SettingsPanel } from '@contexts/settings/presentation/renderer/SettingsPanel'
 import { AGENT_PROVIDER_LABEL, resolveAgentModel } from '@contexts/settings/domain/agentSettings'
 import { WorkspaceCanvas } from '@contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
+import type { WorkspaceCanvasMessageTone } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
 import type {
   WorkspaceViewport,
   WorkspaceState,
@@ -22,6 +23,12 @@ import {
   sanitizeWorkspaceSpaces,
 } from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
 import { invalidateCachedTerminalScreenState } from '@contexts/workspace/presentation/renderer/components/terminalNode/screenStateCache'
+
+const APP_MESSAGE_LABEL: Record<WorkspaceCanvasMessageTone, string> = {
+  info: 'Info',
+  warning: 'Warning',
+  error: 'Error',
+}
 
 export default function App(): React.JSX.Element {
   const {
@@ -76,7 +83,11 @@ export default function App(): React.JSX.Element {
     [activeWorkspaceId, workspaces],
   )
 
-  const [floatingMessage, setFloatingMessage] = useState<{ id: number; text: string } | null>(null)
+  const [floatingMessage, setFloatingMessage] = useState<{
+    id: number
+    text: string
+    tone: WorkspaceCanvasMessageTone
+  } | null>(null)
 
   useEffect(() => {
     if (!floatingMessage) {
@@ -92,9 +103,12 @@ export default function App(): React.JSX.Element {
     }
   }, [floatingMessage])
 
-  const handleShowMessage = useCallback((message: string): void => {
-    setFloatingMessage({ id: Date.now(), text: message })
-  }, [])
+  const handleShowMessage = useCallback(
+    (message: string, tone: WorkspaceCanvasMessageTone = 'info'): void => {
+      setFloatingMessage({ id: Date.now(), text: message, tone })
+    },
+    [],
+  )
 
   const activeProviderLabel = AGENT_PROVIDER_LABEL[agentSettings.defaultProvider]
   const activeProviderModel =
@@ -439,8 +453,13 @@ export default function App(): React.JSX.Element {
       </div>
 
       {floatingMessage ? (
-        <div className="app-message" data-testid="app-message" role="status" aria-live="polite">
-          <span className="app-message__label">Notice</span>
+        <div
+          className={`app-message app-message--${floatingMessage.tone}`}
+          data-testid="app-message"
+          role={floatingMessage.tone === 'error' ? 'alert' : 'status'}
+          aria-live={floatingMessage.tone === 'error' ? 'assertive' : 'polite'}
+        >
+          <span className="app-message__label">{APP_MESSAGE_LABEL[floatingMessage.tone]}</span>
           <span className="app-message__text">{floatingMessage.text}</span>
         </div>
       ) : null}

@@ -1,7 +1,11 @@
 import { useCallback } from 'react'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
-import type { ContextMenuState, EmptySelectionPromptState } from '../types'
+import type {
+  ContextMenuState,
+  EmptySelectionPromptState,
+  ShowWorkspaceCanvasMessage,
+} from '../types'
 import { sanitizeSpaces, validateSpaceTransfer } from '../helpers'
 import {
   computeSpaceRectFromNodes,
@@ -37,7 +41,7 @@ export function useWorkspaceCanvasCreateSpace({
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
   setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
   cancelSpaceRename: () => void
-  onShowMessage?: (message: string) => void
+  onShowMessage?: ShowWorkspaceCanvasMessage
 }): {
   createSpaceFromSelectedNodes: () => void
 } {
@@ -47,7 +51,7 @@ export function useWorkspaceCanvasCreateSpace({
         nodesRef.current.some(node => node.id === nodeId),
       )
       if (normalizedNodeIds.length === 0) {
-        onShowMessage?.('Space must include at least one task or agent.')
+        onShowMessage?.('Space must include at least one task or agent.', 'warning')
         setContextMenu(null)
         setEmptySelectionPrompt(null)
         return
@@ -60,7 +64,7 @@ export function useWorkspaceCanvasCreateSpace({
         workspacePath,
       )
       if (validationError) {
-        onShowMessage?.(validationError)
+        onShowMessage?.(validationError, 'warning')
         return
       }
 

@@ -9,7 +9,7 @@ import {
   resolveDefaultTaskWindowSize,
   resolveDefaultTerminalWindowSize,
 } from '../constants'
-import type { CreateNodeInput } from '../types'
+import type { CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
 
@@ -17,7 +17,7 @@ interface UseWorkspaceCanvasNodeCreationParams {
   defaultTerminalWindowScalePercent: number
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   onRequestPersistFlush?: () => void
-  onShowMessage?: (message: string) => void
+  onShowMessage?: ShowWorkspaceCanvasMessage
   pushBlockingWindowsRight: (desired: Point, size: { width: number; height: number }) => void
   setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
 }
@@ -57,7 +57,7 @@ export function useWorkspaceCanvasNodeCreation({
 
       if (canPlace !== true) {
         await window.coveApi.pty.kill({ sessionId })
-        onShowMessage?.('当前视图附近没有可用空位，请先移动或关闭部分终端窗口。')
+        onShowMessage?.('当前视图附近没有可用空位，请先移动或关闭部分终端窗口。', 'warning')
         return null
       }
 
@@ -128,7 +128,7 @@ export function useWorkspaceCanvasNodeCreation({
       })
 
       if (canPlace !== true) {
-        onShowMessage?.('当前视图附近没有可用空位，请先移动或关闭部分窗口。')
+        onShowMessage?.('当前视图附近没有可用空位，请先移动或关闭部分窗口。', 'warning')
         return null
       }
 
@@ -185,7 +185,7 @@ export function useWorkspaceCanvasNodeCreation({
       })
 
       if (canPlace !== true) {
-        onShowMessage?.('当前视图附近没有可用空位，请先移动或关闭部分窗口。')
+        onShowMessage?.('当前视图附近没有可用空位，请先移动或关闭部分窗口。', 'warning')
         return null
       }
 

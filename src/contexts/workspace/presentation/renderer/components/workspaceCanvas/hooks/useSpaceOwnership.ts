@@ -3,6 +3,7 @@ import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import { expandSpaceToFitOwnedNodesAndPushAway } from '../../../utils/spaceAutoResize'
 import { sanitizeSpaces, validateSpaceTransfer } from '../helpers'
+import type { ShowWorkspaceCanvasMessage } from '../types'
 import {
   applyDirectoryExpectationForDrop,
   computeBoundingRect,
@@ -35,7 +36,7 @@ export function useWorkspaceCanvasSpaceOwnership({
   setNodes: SetNodes
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
-  onShowMessage?: (message: string) => void
+  onShowMessage?: ShowWorkspaceCanvasMessage
 }): {
   handleNodeDragStart: (
     event: React.MouseEvent,
@@ -198,7 +199,7 @@ export function useWorkspaceCanvasSpaceOwnership({
           )
 
           restoreSelectionAfterDrop({ selectedNodeIds: nodeIds, setNodes })
-          onShowMessage?.(validationError)
+          onShowMessage?.(validationError, 'warning')
           return
         }
       }
