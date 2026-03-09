@@ -273,11 +273,10 @@ test.describe('Workspace Canvas - Spaces (Crowded Drop)', () => {
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(2)
 
       await expect(window.locator('.react-flow__selection')).toHaveCount(0)
-      const selectionRect = window.locator('.react-flow__nodesselection-rect')
-      await expect(selectionRect).toBeVisible()
-      await window.waitForTimeout(150)
+      const dragOverlay = dragNodeB.locator('[data-testid="terminal-node-selected-drag-overlay"]')
+      await expect(dragOverlay).toBeVisible()
 
-      await dragLocatorTo(window, selectionRect, pane, {
+      await dragLocatorTo(window, dragOverlay, pane, {
         targetPosition: { x: 220, y: 220 },
       })
 
