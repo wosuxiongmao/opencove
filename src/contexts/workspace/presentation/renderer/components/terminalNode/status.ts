@@ -3,7 +3,7 @@ import type { AgentRuntimeStatus } from '../../types'
 export function getStatusLabel(status: AgentRuntimeStatus | null): string {
   switch (status) {
     case 'running':
-      return 'Running'
+      return 'Working'
     case 'standby':
       return 'Standby'
     case 'exited':
@@ -15,7 +15,7 @@ export function getStatusLabel(status: AgentRuntimeStatus | null): string {
     case 'restoring':
       return 'Restoring'
     default:
-      return 'Running'
+      return 'Working'
   }
 }
 

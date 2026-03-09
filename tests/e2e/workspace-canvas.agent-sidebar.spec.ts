@@ -110,7 +110,7 @@ test.describe('Workspace Canvas - Agent Sidebar', () => {
           return delta.dy
         })
         .toBeLessThan(140)
-      await expect(agentNode.locator('.terminal-node__status')).toHaveText('Running')
+      await expect(agentNode.locator('.terminal-node__status')).toHaveText('Working')
 
       const agentHeader = agentNode.locator('.terminal-node__header')
       await agentHeader.click()

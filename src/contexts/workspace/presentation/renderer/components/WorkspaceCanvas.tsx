@@ -286,6 +286,7 @@ function WorkspaceCanvasInner({
     nodesRef,
     reactFlow,
   })
+
   workspaceCanvasHooks.useWorkspaceCanvasPtyTaskCompletion({
     setNodes,
     onRequestPersistFlush,
@@ -297,7 +298,6 @@ function WorkspaceCanvasInner({
     setSelectedSpaceIds,
     selectedNodeIdsRef,
     selectedSpaceIdsRef,
-    nodesRef,
     spacesRef,
     workspacePath,
     agentSettings,

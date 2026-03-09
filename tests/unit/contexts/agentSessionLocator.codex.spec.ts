@@ -34,6 +34,28 @@ function createRolloutFirstLine({
   })
 }
 
+function createRolloutFirstLineWithRecordTimestamp({
+  sessionId,
+  cwd,
+  payloadTimestamp,
+  recordTimestamp,
+}: {
+  sessionId: string
+  cwd: string
+  payloadTimestamp: string
+  recordTimestamp: string
+}): string {
+  return JSON.stringify({
+    timestamp: recordTimestamp,
+    type: 'session_meta',
+    payload: {
+      id: sessionId,
+      cwd,
+      timestamp: payloadTimestamp,
+    },
+  })
+}
+
 describe('locateAgentResumeSessionId (codex)', () => {
   it('returns the uniquely matching session_meta candidate near launch time', async () => {
     const tempHome = await fs.mkdtemp(join(tmpdir(), 'cove-test-home-'))
@@ -123,6 +145,44 @@ describe('locateAgentResumeSessionId (codex)', () => {
       })
 
       expect(sessionId).toBeNull()
+    } finally {
+      process.env.HOME = previousHome
+      await fs.rm(tempHome, { recursive: true, force: true })
+    }
+  })
+
+  it('matches session_meta using the timestamp closest to startedAtMs', async () => {
+    const tempHome = await fs.mkdtemp(join(tmpdir(), 'cove-test-home-'))
+    const previousHome = process.env.HOME
+    process.env.HOME = tempHome
+
+    const cwd = join(tempHome, 'workspace')
+    const startedAtMs = Date.now()
+    const { year, month, day } = toDateParts(startedAtMs)
+    const sessionsDir = join(tempHome, '.codex', 'sessions', year, month, day)
+
+    try {
+      await fs.mkdir(sessionsDir, { recursive: true })
+      await fs.writeFile(
+        join(sessionsDir, 'rollout-record-timestamp.jsonl'),
+        `${createRolloutFirstLineWithRecordTimestamp({
+          sessionId: 'session-expected',
+          cwd,
+          payloadTimestamp: new Date(startedAtMs - 5 * 60 * 1000).toISOString(),
+          recordTimestamp: new Date(startedAtMs + 150).toISOString(),
+        })}
+`,
+        'utf8',
+      )
+
+      const sessionId = await locateAgentResumeSessionId({
+        provider: 'codex',
+        cwd,
+        startedAtMs,
+        timeoutMs: 0,
+      })
+
+      expect(sessionId).toBe('session-expected')
     } finally {
       process.env.HOME = previousHome
       await fs.rm(tempHome, { recursive: true, force: true })

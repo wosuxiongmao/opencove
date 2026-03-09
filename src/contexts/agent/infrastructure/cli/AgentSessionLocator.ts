@@ -14,7 +14,8 @@ interface LocateAgentResumeSessionInput {
 interface CodexSessionMeta {
   sessionId: string
   cwd: string
-  timestampMs: number
+  payloadTimestampMs: number | null
+  recordTimestampMs: number | null
 }
 
 const POLL_INTERVAL_MS = 200
@@ -129,21 +130,40 @@ function parseCodexSessionMeta(firstLine: string): CodexSessionMeta | null {
 
     const sessionId = typeof parsed.payload?.id === 'string' ? parsed.payload.id.trim() : ''
     const sessionCwd = typeof parsed.payload?.cwd === 'string' ? resolve(parsed.payload.cwd) : null
-    const timestampMs =
-      parseTimestampMs(parsed.payload?.timestamp) ?? parseTimestampMs(parsed.timestamp)
+    const payloadTimestampMs = parseTimestampMs(parsed.payload?.timestamp)
+    const recordTimestampMs = parseTimestampMs(parsed.timestamp)
 
-    if (sessionId.length === 0 || !sessionCwd || timestampMs === null) {
+    if (
+      sessionId.length === 0 ||
+      !sessionCwd ||
+      (payloadTimestampMs === null && recordTimestampMs === null)
+    ) {
       return null
     }
 
     return {
       sessionId,
       cwd: sessionCwd,
-      timestampMs,
+      payloadTimestampMs,
+      recordTimestampMs,
     }
   } catch {
     return null
   }
+}
+
+function resolveCodexSessionTimestampMs(meta: CodexSessionMeta, startedAtMs: number): number {
+  const candidates = [meta.payloadTimestampMs, meta.recordTimestampMs].filter(
+    (value): value is number => typeof value === 'number',
+  )
+
+  if (candidates.length === 0) {
+    return startedAtMs
+  }
+
+  return candidates.sort(
+    (left, right) => Math.abs(left - startedAtMs) - Math.abs(right - startedAtMs),
+  )[0]
 }
 
 async function findClaudeResumeSessionId(cwd: string, startedAtMs: number): Promise<string | null> {
@@ -225,7 +245,8 @@ async function findCodexResumeSessionId(cwd: string, startedAtMs: number): Promi
       continue
     }
 
-    if (Math.abs(parsed.timestampMs - startedAtMs) > CODEX_CANDIDATE_WINDOW_MS) {
+    const timestampMs = resolveCodexSessionTimestampMs(parsed, startedAtMs)
+    if (Math.abs(timestampMs - startedAtMs) > CODEX_CANDIDATE_WINDOW_MS) {
       continue
     }
 

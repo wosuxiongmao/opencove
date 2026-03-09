@@ -9,11 +9,14 @@ import type {
 } from '@contexts/workspace/presentation/renderer/types'
 import { DEFAULT_WORKSPACE_MINIMAP_VISIBLE } from '@contexts/workspace/presentation/renderer/types'
 import { toPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence'
+import { AppMessage } from './components/AppMessage'
 import { DeleteProjectDialog } from './components/DeleteProjectDialog'
 import { ProjectContextMenu } from './components/ProjectContextMenu'
 import { Sidebar } from './components/Sidebar'
+import { WorkspaceEmptyState } from './components/WorkspaceEmptyState'
 import { useHydrateAppState } from './hooks/useHydrateAppState'
 import { usePersistedAppState } from './hooks/usePersistedAppState'
+import { usePtyWorkspaceRuntimeSync } from './hooks/usePtyWorkspaceRuntimeSync'
 import { useProjectContextMenuDismiss } from './hooks/useProjectContextMenuDismiss'
 import { useProviderModelCatalog } from './hooks/useProviderModelCatalog'
 import type { ProjectContextMenuState } from './types'
@@ -23,12 +26,6 @@ import {
   sanitizeWorkspaceSpaces,
 } from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
 import { invalidateCachedTerminalScreenState } from '@contexts/workspace/presentation/renderer/components/terminalNode/screenStateCache'
-
-const APP_MESSAGE_LABEL: Record<WorkspaceCanvasMessageTone, string> = {
-  info: 'Info',
-  warning: 'Warning',
-  error: 'Error',
-}
 
 export default function App(): React.JSX.Element {
   const {
@@ -77,6 +74,8 @@ export default function App(): React.JSX.Element {
     isHydrated: isPersistReady,
     producePersistedState,
   })
+
+  usePtyWorkspaceRuntimeSync({ requestPersistFlush })
 
   const activeWorkspace = useMemo(
     () => workspaces.find(workspace => workspace.id === activeWorkspaceId) ?? null,
@@ -441,27 +440,13 @@ export default function App(): React.JSX.Element {
               }
             />
           ) : (
-            <div className="workspace-empty-state">
-              <h2>Add a project to start</h2>
-              <p>Each project has its own infinite canvas and terminals.</p>
-              <button type="button" onClick={() => void handleAddWorkspace()}>
-                Add Project
-              </button>
-            </div>
+            <WorkspaceEmptyState onAddWorkspace={() => void handleAddWorkspace()} />
           )}
         </main>
       </div>
 
       {floatingMessage ? (
-        <div
-          className={`app-message app-message--${floatingMessage.tone}`}
-          data-testid="app-message"
-          role={floatingMessage.tone === 'error' ? 'alert' : 'status'}
-          aria-live={floatingMessage.tone === 'error' ? 'assertive' : 'polite'}
-        >
-          <span className="app-message__label">{APP_MESSAGE_LABEL[floatingMessage.tone]}</span>
-          <span className="app-message__text">{floatingMessage.text}</span>
-        </div>
+        <AppMessage tone={floatingMessage.tone} text={floatingMessage.text} />
       ) : null}
 
       {projectContextMenu ? (

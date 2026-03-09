@@ -13,6 +13,8 @@ import type {
 let latestReactFlowProps: Record<string, unknown> = {}
 
 vi.mock('@xyflow/react', () => {
+  let currentNodes: Array<{ id: string; type: string; data: unknown }> = []
+
   return {
     ReactFlowProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     useReactFlow: () => ({
@@ -21,6 +23,7 @@ vi.mock('@xyflow/react', () => {
       getViewport: vi.fn(() => ({ x: 0, y: 0, zoom: 1 })),
       setViewport: vi.fn(),
     }),
+    useStore: (selector: (state: unknown) => unknown) => selector({ nodes: currentNodes }),
     useStoreApi: () => ({
       setState: vi.fn(),
       getState: vi.fn(() => ({})),
@@ -30,6 +33,7 @@ vi.mock('@xyflow/react', () => {
     applyNodeChanges: (_changes: unknown, nodes: unknown) => nodes,
     ReactFlow: (props: Record<string, unknown>) => {
       latestReactFlowProps = props
+      currentNodes = (props.nodes as Array<{ id: string; type: string; data: unknown }>) ?? []
       return <div data-testid="workspace-react-flow" />
     },
     Background: () => null,

@@ -1,5 +1,5 @@
 import React, { useMemo, type MutableRefObject, type ReactElement } from 'react'
-import type { Node } from '@xyflow/react'
+import { useStore, type Node } from '@xyflow/react'
 import { NoteNode } from '../NoteNode'
 import { TaskNode } from '../TaskNode'
 import { TerminalNode } from '../TerminalNode'
@@ -164,7 +164,6 @@ function NoteNodeType({
 }
 
 interface WorkspaceCanvasNodeTypesParams {
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   workspacePath: string
   terminalFontSize: number
@@ -189,7 +188,6 @@ interface WorkspaceCanvasNodeTypesParams {
 }
 
 export function useWorkspaceCanvasNodeTypes({
-  nodesRef,
   spacesRef,
   workspacePath,
   terminalFontSize,
@@ -218,8 +216,110 @@ export function useWorkspaceCanvasNodeTypes({
     dragging?: boolean
   }) => ReactElement | null
 > {
-  return useMemo(
-    () => ({
+  return useMemo(() => {
+    const TaskNodeType = ({ data, id }: { data: TerminalNodeData; id: string }) => {
+      const linkedAgentNodeId = data.task?.linkedAgentNodeId ?? null
+      const linkedAgentNode = useStore(storeState => {
+        if (!linkedAgentNodeId) {
+          return null
+        }
+
+        const state = storeState as unknown as {
+          nodeLookup?: { get?: unknown }
+          nodeInternals?: { get?: unknown }
+          nodes?: Array<Node<TerminalNodeData>>
+        }
+
+        const lookup = state.nodeLookup ?? state.nodeInternals
+        if (lookup && typeof lookup.get === 'function') {
+          return (lookup as Map<string, Node<TerminalNodeData>>).get(linkedAgentNodeId) ?? null
+        }
+
+        return state.nodes?.find(node => node.id === linkedAgentNodeId) ?? null
+      })
+
+      if (!data.task) {
+        return null
+      }
+
+      const taskSpace = spacesRef.current.find(space => space.nodeIds.includes(id)) ?? null
+      const currentDirectory =
+        taskSpace && taskSpace.directoryPath.trim().length > 0
+          ? taskSpace.directoryPath
+          : workspacePath
+
+      const linkedAgentSummary =
+        linkedAgentNode && linkedAgentNode.data.kind === 'agent' && linkedAgentNode.data.agent
+          ? {
+              nodeId: linkedAgentNode.id,
+              title: linkedAgentNode.data.title,
+              provider: linkedAgentNode.data.agent.provider,
+              status: linkedAgentNode.data.status,
+              startedAt: linkedAgentNode.data.startedAt,
+            }
+          : null
+      const linkedAgentTitle = linkedAgentSummary?.title ?? null
+
+      return (
+        <TaskNode
+          title={data.title}
+          requirement={data.task.requirement}
+          status={data.task.status}
+          priority={data.task.priority}
+          tags={data.task.tags}
+          isEnriching={data.task.isEnriching === true}
+          linkedAgentTitle={linkedAgentTitle}
+          linkedAgentNode={linkedAgentSummary}
+          agentSessions={data.task.agentSessions ?? []}
+          currentDirectory={currentDirectory}
+          width={data.width}
+          height={data.height}
+          onClose={() => {
+            requestTaskDeleteRef.current(id)
+          }}
+          onOpenEditor={() => {
+            openTaskEditorRef.current(id)
+          }}
+          onQuickTitleSave={title => {
+            quickUpdateTaskTitleRef.current(id, title)
+          }}
+          onQuickRequirementSave={requirement => {
+            quickUpdateTaskRequirementRef.current(id, requirement)
+          }}
+          onRunAgent={() => {
+            void runTaskAgentRef.current(id)
+          }}
+          onResize={size => resizeNodeRef.current(id, size)}
+          onStatusChange={status => {
+            updateTaskStatusRef.current(id, status)
+          }}
+          onResumeAgentSession={recordId => {
+            void resumeTaskAgentSessionRef.current(id, recordId)
+          }}
+          onRemoveAgentSessionRecord={recordId => {
+            removeTaskAgentSessionRecordRef.current(id, recordId)
+          }}
+          onInteractionStart={options => {
+            if (options?.selectNode !== false) {
+              if (options?.shiftKey === true) {
+                selectNode(id, { toggle: true })
+                return
+              }
+
+              selectNode(id)
+            }
+
+            if (options?.normalizeViewport === false) {
+              return
+            }
+
+            normalizeViewportForTerminalInteractionRef.current(id)
+          }}
+        />
+      )
+    }
+
+    return {
       terminalNode: ({
         data,
         id,
@@ -260,118 +360,27 @@ export function useWorkspaceCanvasNodeTypes({
           />
         )
       },
-      taskNode: ({ data, id }: { data: TerminalNodeData; id: string }) => {
-        if (!data.task) {
-          return null
-        }
-
-        const taskSpace = spacesRef.current.find(space => space.nodeIds.includes(id)) ?? null
-        const currentDirectory =
-          taskSpace && taskSpace.directoryPath.trim().length > 0
-            ? taskSpace.directoryPath
-            : workspacePath
-
-        const linkedAgentTitle = data.task.linkedAgentNodeId
-          ? (nodesRef.current.find(
-              node => node.id === data.task?.linkedAgentNodeId && node.data.kind === 'agent',
-            )?.data.title ?? null)
-          : null
-        const linkedAgentNode = data.task.linkedAgentNodeId
-          ? (nodesRef.current.find(
-              node => node.id === data.task?.linkedAgentNodeId && node.data.kind === 'agent',
-            ) ?? null)
-          : null
-        const linkedAgentSummary =
-          linkedAgentNode && linkedAgentNode.data.kind === 'agent' && linkedAgentNode.data.agent
-            ? {
-                nodeId: linkedAgentNode.id,
-                title: linkedAgentNode.data.title,
-                provider: linkedAgentNode.data.agent.provider,
-                status: linkedAgentNode.data.status,
-                startedAt: linkedAgentNode.data.startedAt,
-              }
-            : null
-
-        return (
-          <TaskNode
-            title={data.title}
-            requirement={data.task.requirement}
-            status={data.task.status}
-            priority={data.task.priority}
-            tags={data.task.tags}
-            isEnriching={data.task.isEnriching === true}
-            linkedAgentTitle={linkedAgentTitle}
-            linkedAgentNode={linkedAgentSummary}
-            agentSessions={data.task.agentSessions ?? []}
-            currentDirectory={currentDirectory}
-            width={data.width}
-            height={data.height}
-            onClose={() => {
-              requestTaskDeleteRef.current(id)
-            }}
-            onOpenEditor={() => {
-              openTaskEditorRef.current(id)
-            }}
-            onQuickTitleSave={title => {
-              quickUpdateTaskTitleRef.current(id, title)
-            }}
-            onQuickRequirementSave={requirement => {
-              quickUpdateTaskRequirementRef.current(id, requirement)
-            }}
-            onRunAgent={() => {
-              void runTaskAgentRef.current(id)
-            }}
-            onResize={size => resizeNodeRef.current(id, size)}
-            onStatusChange={status => {
-              updateTaskStatusRef.current(id, status)
-            }}
-            onResumeAgentSession={recordId => {
-              void resumeTaskAgentSessionRef.current(id, recordId)
-            }}
-            onRemoveAgentSessionRecord={recordId => {
-              removeTaskAgentSessionRecordRef.current(id, recordId)
-            }}
-            onInteractionStart={options => {
-              if (options?.selectNode !== false) {
-                if (options?.shiftKey === true) {
-                  selectNode(id, { toggle: true })
-                  return
-                }
-
-                selectNode(id)
-              }
-
-              if (options?.normalizeViewport === false) {
-                return
-              }
-
-              normalizeViewportForTerminalInteractionRef.current(id)
-            }}
-          />
-        )
-      },
-    }),
-    [
-      closeNodeRef,
-      normalizeViewportForTerminalInteractionRef,
-      nodesRef,
-      selectNode,
-      spacesRef,
-      workspacePath,
-      terminalFontSize,
-      updateNoteTextRef,
-      openTaskEditorRef,
-      quickUpdateTaskRequirementRef,
-      quickUpdateTaskTitleRef,
-      requestTaskDeleteRef,
-      resizeNodeRef,
-      runTaskAgentRef,
-      resumeTaskAgentSessionRef,
-      removeTaskAgentSessionRecordRef,
-      updateNodeScrollbackRef,
-      updateTaskStatusRef,
-      updateTerminalTitleRef,
-      renameTerminalTitleRef,
-    ],
-  )
+      taskNode: TaskNodeType,
+    }
+  }, [
+    closeNodeRef,
+    normalizeViewportForTerminalInteractionRef,
+    selectNode,
+    spacesRef,
+    workspacePath,
+    terminalFontSize,
+    updateNoteTextRef,
+    openTaskEditorRef,
+    quickUpdateTaskRequirementRef,
+    quickUpdateTaskTitleRef,
+    requestTaskDeleteRef,
+    resizeNodeRef,
+    runTaskAgentRef,
+    resumeTaskAgentSessionRef,
+    removeTaskAgentSessionRecordRef,
+    updateNodeScrollbackRef,
+    updateTaskStatusRef,
+    updateTerminalTitleRef,
+    renameTerminalTitleRef,
+  ])
 }

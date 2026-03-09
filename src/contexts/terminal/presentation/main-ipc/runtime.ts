@@ -5,13 +5,9 @@ import type {
   AgentProviderId,
   TerminalDataEvent,
   TerminalExitEvent,
-  TerminalSessionMetadataEvent,
-  TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
-import { locateAgentResumeSessionId } from '../../../agent/infrastructure/cli/AgentSessionLocator'
 import { PtyManager, type SpawnPtyOptions } from '../../../../platform/process/pty/PtyManager'
-import { resolveSessionFilePath } from '../../../agent/infrastructure/watchers/SessionFileResolver'
-import { SessionTurnStateWatcher } from '../../../agent/infrastructure/watchers/SessionTurnStateWatcher'
+import { createSessionStateWatcherController } from './sessionStateWatcher'
 
 const PTY_DATA_FLUSH_DELAY_MS = 32
 const PTY_DATA_HIGH_VOLUME_FLUSH_DELAY_MS = 64
@@ -50,8 +46,6 @@ export function createPtyRuntime(): PtyRuntime {
   const ptyManager = new PtyManager()
   const terminalProbeBufferBySession = new Map<string, string>()
   const isTerminalAttachedBySession = new Map<string, boolean>()
-  const stateWatcherBySession = new Map<string, SessionTurnStateWatcher>()
-  const stateWatcherVersionBySession = new Map<string, number>()
   const pendingPtyDataChunksBySession = new Map<string, string[]>()
   const pendingPtyDataCharsBySession = new Map<string, number>()
   const pendingPtyDataFlushTimerBySession = new Map<string, NodeJS.Timeout>()
@@ -73,6 +67,11 @@ export function createPtyRuntime(): PtyRuntime {
       }
     }
   }
+
+  const sessionStateWatcher = createSessionStateWatcherController({
+    sendToAllWindows,
+    reportIssue: reportStateWatcherIssue,
+  })
 
   const cleanupPtyDataSubscriptions = (contentsId: number): void => {
     const sessions = ptyDataSessionsByWebContentsId.get(contentsId)
@@ -250,30 +249,6 @@ export function createPtyRuntime(): PtyRuntime {
     terminalProbeBufferBySession.delete(sessionId)
   }
 
-  const bumpStateWatcherVersion = (sessionId: string): number => {
-    const next = (stateWatcherVersionBySession.get(sessionId) ?? 0) + 1
-    stateWatcherVersionBySession.set(sessionId, next)
-    return next
-  }
-
-  const broadcastSessionMetadata = (sessionId: string, resumeSessionId: string | null): void => {
-    const eventPayload: TerminalSessionMetadataEvent = {
-      sessionId,
-      resumeSessionId,
-    }
-    sendToAllWindows(IPC_CHANNELS.ptySessionMetadata, eventPayload)
-  }
-
-  const clearSessionStateWatcher = (sessionId: string): void => {
-    bumpStateWatcherVersion(sessionId)
-
-    const watcher = stateWatcherBySession.get(sessionId)
-    if (watcher) {
-      watcher.dispose()
-      stateWatcherBySession.delete(sessionId)
-    }
-  }
-
   const startSessionStateWatcher = ({
     sessionId,
     provider,
@@ -281,81 +256,13 @@ export function createPtyRuntime(): PtyRuntime {
     resumeSessionId,
     startedAtMs,
   }: StartSessionStateWatcherInput): void => {
-    clearSessionStateWatcher(sessionId)
-
-    const watcherVersion = stateWatcherVersionBySession.get(sessionId) ?? 0
-
-    void (async () => {
-      const resolvedSessionId =
-        resumeSessionId ??
-        (await locateAgentResumeSessionId({
-          provider,
-          cwd,
-          startedAtMs,
-          timeoutMs: 20_000,
-        }))
-
-      if (!resolvedSessionId) {
-        reportStateWatcherIssue(
-          `[cove] Unable to resolve ${provider} session id for state watcher (${sessionId})`,
-        )
-        return
-      }
-
-      if ((stateWatcherVersionBySession.get(sessionId) ?? 0) !== watcherVersion) {
-        return
-      }
-
-      broadcastSessionMetadata(sessionId, resolvedSessionId)
-
-      const sessionFilePath = await resolveSessionFilePath({
-        provider,
-        cwd,
-        sessionId: resolvedSessionId,
-        startedAtMs,
-        timeoutMs: 20_000,
-      })
-
-      if (!sessionFilePath) {
-        reportStateWatcherIssue(
-          `[cove] Unable to locate session file for state watcher (${provider}, ${resolvedSessionId})`,
-        )
-        return
-      }
-
-      if ((stateWatcherVersionBySession.get(sessionId) ?? 0) !== watcherVersion) {
-        return
-      }
-
-      const watcher = new SessionTurnStateWatcher({
-        provider,
-        sessionId,
-        filePath: sessionFilePath,
-        onState: (stateSessionId, state) => {
-          const eventPayload: TerminalSessionStateEvent = {
-            sessionId: stateSessionId,
-            state,
-          }
-          sendToAllWindows(IPC_CHANNELS.ptyState, eventPayload)
-        },
-        onError: error => {
-          const detail =
-            error instanceof Error ? `${error.name}: ${error.message}` : 'unknown watcher error'
-          reportStateWatcherIssue(
-            `[cove] state watcher failed for ${provider} session ${sessionId}: ${detail}`,
-          )
-          clearSessionStateWatcher(sessionId)
-        },
-      })
-
-      if ((stateWatcherVersionBySession.get(sessionId) ?? 0) !== watcherVersion) {
-        watcher.dispose()
-        return
-      }
-
-      stateWatcherBySession.set(sessionId, watcher)
-      watcher.start()
-    })()
+    sessionStateWatcher.start({
+      sessionId,
+      provider,
+      cwd,
+      resumeSessionId,
+      startedAtMs,
+    })
   }
 
   const resolveTerminalProbeReplies = (sessionId: string, outputChunk: string): void => {
@@ -394,7 +301,7 @@ export function createPtyRuntime(): PtyRuntime {
     pty.onExit(exit => {
       flushPtyDataBroadcast(sessionId)
       clearSessionProbeState(sessionId)
-      clearSessionStateWatcher(sessionId)
+      sessionStateWatcher.disposeSession(sessionId)
       cleanupSessionPtyDataSubscriptions(sessionId)
       ptyManager.delete(sessionId, { keepSnapshot: true })
       const eventPayload: TerminalExitEvent = {
@@ -415,6 +322,7 @@ export function createPtyRuntime(): PtyRuntime {
     write: (sessionId, data) => {
       markSessionAttached(sessionId)
       ptyManager.write(sessionId, data)
+      sessionStateWatcher.noteInteraction(sessionId)
     },
     resize: (sessionId, cols, rows) => {
       markSessionAttached(sessionId)
@@ -423,7 +331,7 @@ export function createPtyRuntime(): PtyRuntime {
     kill: sessionId => {
       flushPtyDataBroadcast(sessionId)
       clearSessionProbeState(sessionId)
-      clearSessionStateWatcher(sessionId)
+      sessionStateWatcher.disposeSession(sessionId)
       cleanupSessionPtyDataSubscriptions(sessionId)
       ptyManager.kill(sessionId)
     },
@@ -459,11 +367,7 @@ export function createPtyRuntime(): PtyRuntime {
     },
     startSessionStateWatcher,
     dispose: () => {
-      stateWatcherBySession.forEach(watcher => {
-        watcher.dispose()
-      })
-      stateWatcherBySession.clear()
-      stateWatcherVersionBySession.clear()
+      sessionStateWatcher.dispose()
 
       pendingPtyDataFlushTimerBySession.forEach(timer => {
         clearTimeout(timer)

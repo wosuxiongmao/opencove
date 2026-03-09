@@ -10,7 +10,7 @@ export function resolveTerminalNodeInteraction(
     return null
   }
 
-  if (target.closest('.terminal-node__resizer, button, input, textarea, select, a')) {
+  if (target.closest('.terminal-node__resizer')) {
     return null
   }
 
@@ -22,10 +22,18 @@ export function resolveTerminalNodeInteraction(
   }
 
   if (target.closest('.terminal-node__terminal')) {
+    if (target.closest('button, input, select, a')) {
+      return null
+    }
+
     return {
       normalizeViewport: true,
       selectNode: false,
     }
+  }
+
+  if (target.closest('button, input, textarea, select, a')) {
+    return null
   }
 
   return {

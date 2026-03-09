@@ -11,6 +11,8 @@ import type {
 import { WorkspaceCanvas } from '../../../src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
 
 vi.mock('@xyflow/react', () => {
+  let currentNodes: Array<{ id: string; type: string; data: unknown }> = []
+
   return {
     ReactFlowProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
     useReactFlow: () => ({
@@ -19,6 +21,7 @@ vi.mock('@xyflow/react', () => {
       getViewport: vi.fn(() => ({ x: 0, y: 0, zoom: 1 })),
       setViewport: vi.fn(),
     }),
+    useStore: (selector: (state: unknown) => unknown) => selector({ nodes: currentNodes }),
     useStoreApi: () => ({
       setState: vi.fn(),
       getState: vi.fn(() => ({})),
@@ -33,6 +36,7 @@ vi.mock('@xyflow/react', () => {
       nodes: Array<{ id: string; type: string; data: unknown }>
       nodeTypes?: Record<string, React.ComponentType<{ id: string; data: unknown }>>
     }) => {
+      currentNodes = nodes
       return (
         <div>
           {nodes.map(node => {

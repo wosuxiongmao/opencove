@@ -12,7 +12,6 @@ export function useWorkspaceCanvasComposedNodeTypes({
   setSelectedSpaceIds,
   selectedNodeIdsRef,
   selectedSpaceIdsRef,
-  nodesRef,
   spacesRef,
   workspacePath,
   agentSettings,
@@ -26,7 +25,6 @@ export function useWorkspaceCanvasComposedNodeTypes({
   setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
   selectedNodeIdsRef: MutableRefObject<string[]>
   selectedSpaceIdsRef: MutableRefObject<string[]>
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   workspacePath: string
   agentSettings: AgentSettings
@@ -43,7 +41,6 @@ export function useWorkspaceCanvasComposedNodeTypes({
     })
 
   return useWorkspaceCanvasNodeTypes({
-    nodesRef,
     spacesRef,
     workspacePath,
     terminalFontSize: agentSettings.terminalFontSize,
