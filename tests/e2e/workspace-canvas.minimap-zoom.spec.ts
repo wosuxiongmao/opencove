@@ -135,7 +135,7 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
         {
           id: 'node-zoom-2',
           title: 'terminal-zoom-2',
-          position: { x: 820, y: 520 },
+          position: { x: 700, y: 440 },
           width: 460,
           height: 300,
         },
@@ -150,25 +150,8 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
       const zoomBefore = (await readCanvasViewport(window)).zoom
       expect(zoomBefore).toBeGreaterThan(1.01)
 
-      const firstTerminal = window.locator('.terminal-node').filter({ hasText: 'terminal-zoom-1' })
-      await expect(firstTerminal).toBeVisible()
-      await firstTerminal.locator('.terminal-node__terminal').click({
-        position: { x: 48, y: 48 },
-        force: true,
-      })
-
-      await expect
-        .poll(async () => {
-          return (await readCanvasViewport(window)).zoom
-        })
-        .toBeCloseTo(1, 2)
-
       const secondTerminal = window.locator('.terminal-node').filter({ hasText: 'terminal-zoom-2' })
       await expect(secondTerminal).toBeVisible()
-      await secondTerminal.locator('.terminal-node__terminal').click({
-        position: { x: 48, y: 48 },
-        force: true,
-      })
 
       const readCenterDelta = async (): Promise<{ dx: number; dy: number }> => {
         const canvasBox = await window.locator('.workspace-canvas .react-flow').boundingBox()
@@ -191,6 +174,20 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
           dy: Math.abs(canvasCenterY - terminalCenterY),
         }
       }
+
+      const deltaBefore = await readCenterDelta()
+      expect(deltaBefore.dx).toBeGreaterThan(120)
+
+      await secondTerminal.locator('.terminal-node__terminal').click({
+        position: { x: 48, y: 48 },
+        force: true,
+      })
+
+      await expect
+        .poll(async () => {
+          return (await readCanvasViewport(window)).zoom
+        })
+        .toBeCloseTo(1, 2)
 
       await expect
         .poll(async () => {

@@ -1,8 +1,11 @@
 import { defineConfig } from '@playwright/test'
 
-// Electron E2E 默认使用 offscreen 后台窗口，兼顾稳定性与避免界面干扰；可通过 OPENCOVE_E2E_WINDOW_MODE 覆盖。
-// 可选值：normal / inactive / offscreen / hidden。
-process.env['OPENCOVE_E2E_WINDOW_MODE'] = process.env['OPENCOVE_E2E_WINDOW_MODE'] ?? 'offscreen'
+// macOS 的 pointer / focus 语义在后台窗口模式下与前台窗口不一致。
+// 默认让 Darwin 走 normal，对齐本地开发与 macOS CI；其他平台保持 offscreen。
+// 可通过 OPENCOVE_E2E_WINDOW_MODE 覆盖：normal / inactive / offscreen / hidden。
+const defaultE2EWindowMode = process.platform === 'darwin' ? 'normal' : 'offscreen'
+process.env['OPENCOVE_E2E_WINDOW_MODE'] =
+  process.env['OPENCOVE_E2E_WINDOW_MODE'] ?? defaultE2EWindowMode
 
 /**
  * Playwright 配置 - Electron E2E 测试
@@ -25,8 +28,8 @@ export default defineConfig({
     timeout: 15_000,
   },
 
-  // 重试配置：CI 中重试 2 次，本地不重试
-  retries: process.env.CI ? 2 : 0,
+  // CI 最多重跑一次，避免把确定性失配拖成更长的失败队列。
+  retries: process.env.CI ? 1 : 0,
 
   // 并行 worker 数量
   workers: 1, // Electron 测试建议串行运行

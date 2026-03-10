@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test'
 import {
-  dragMouse,
   clearAndSeedWorkspace,
   dragLocatorTo,
   launchApp,
@@ -40,18 +39,6 @@ test.describe('Workspace Canvas - Drag & Resize', () => {
       await expect(firstTerminal).toBeVisible()
       await expect(firstTerminal.locator('.xterm')).toBeVisible()
 
-      const header = firstTerminal.locator('.terminal-node__header')
-      const pane = window.locator('.workspace-canvas .react-flow__pane')
-      await expect(pane).toBeVisible()
-
-      await dragLocatorTo(window, header, pane, {
-        sourcePosition: { x: 80, y: 16 },
-        targetPosition: { x: 520, y: 420 },
-      })
-
-      await expect(firstTerminal).toBeVisible()
-      await expect(firstTerminal.locator('.xterm')).toBeVisible()
-
       const rightResizer = firstTerminal.locator('[data-testid="terminal-resizer-right"]')
       const rightResizerBox = await rightResizer.boundingBox()
       if (!rightResizerBox) {
@@ -61,11 +48,10 @@ test.describe('Workspace Canvas - Drag & Resize', () => {
       const rightStartX = rightResizerBox.x + rightResizerBox.width / 2
       const rightStartY = rightResizerBox.y + rightResizerBox.height / 2
 
-      await dragMouse(window, {
-        start: { x: rightStartX, y: rightStartY },
-        end: { x: rightStartX + 180, y: rightStartY },
-        steps: 12,
-      })
+      await window.mouse.move(rightStartX, rightStartY)
+      await window.mouse.down()
+      await window.mouse.move(rightStartX + 180, rightStartY, { steps: 12 })
+      await window.mouse.up()
 
       const widthResizedNode = await window.evaluate(async key => {
         void key
@@ -101,11 +87,10 @@ test.describe('Workspace Canvas - Drag & Resize', () => {
       const bottomStartX = bottomResizerBox.x + bottomResizerBox.width / 2
       const bottomStartY = bottomResizerBox.y + bottomResizerBox.height / 2
 
-      await dragMouse(window, {
-        start: { x: bottomStartX, y: bottomStartY },
-        end: { x: bottomStartX, y: bottomStartY + 120 },
-        steps: 12,
-      })
+      await window.mouse.move(bottomStartX, bottomStartY)
+      await window.mouse.down()
+      await window.mouse.move(bottomStartX, bottomStartY + 120, { steps: 12 })
+      await window.mouse.up()
 
       const heightResizedNode = await window.evaluate(async key => {
         void key
@@ -131,6 +116,18 @@ test.describe('Workspace Canvas - Drag & Resize', () => {
       expect(heightResizedNode).toBeTruthy()
       expect(heightResizedNode?.width ?? 0).toBeGreaterThanOrEqual(460)
       expect(heightResizedNode?.height ?? 0).toBeGreaterThan(300)
+      await expect(firstTerminal.locator('.xterm')).toBeVisible()
+
+      const header = firstTerminal.locator('.terminal-node__header')
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+
+      await dragLocatorTo(window, header, pane, {
+        sourcePosition: { x: 80, y: 16 },
+        targetPosition: { x: 360, y: 320 },
+      })
+
+      await expect(firstTerminal).toBeVisible()
       await expect(firstTerminal.locator('.xterm')).toBeVisible()
 
       await terminals.nth(1).locator('.terminal-node__header').click({ force: true })

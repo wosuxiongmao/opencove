@@ -22,6 +22,15 @@ function isTruthyEnv(rawValue: string | undefined): boolean {
   return rawValue === '1' || rawValue.toLowerCase() === 'true'
 }
 
+async function bringWindowToFrontForNormalMode(window: Page): Promise<void> {
+  if ((process.env['OPENCOVE_E2E_WINDOW_MODE'] as E2EWindowMode | undefined) !== 'normal') {
+    return
+  }
+
+  await window.bringToFront().catch(() => undefined)
+  await window.waitForTimeout(50)
+}
+
 function isRetryableLaunchError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error)
   return (
@@ -257,6 +266,8 @@ async function launchAppInMode(
     const window = await electronApp.firstWindow()
     await window.waitForLoadState('domcontentloaded')
 
+    await bringWindowToFrontForNormalMode(window)
+
     return { electronApp, window }
   } catch (error) {
     if (electronApp) {
@@ -343,6 +354,7 @@ export async function seedWorkspaceState(
     }
 
     await window.reload({ waitUntil: 'domcontentloaded' })
+    await bringWindowToFrontForNormalMode(window)
 
     const expectedWorkspaces = payload.workspaces.map(workspace => ({
       id: workspace.id,
