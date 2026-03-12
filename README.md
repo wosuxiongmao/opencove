@@ -1,104 +1,108 @@
-简体中文 | [English](./README_EN.md)
-
-![OpenCove Header](./assets/images/opencove_header_readme.jpg)
+<div align="center">
 
 # OpenCove 🌌
 
-> **AI 编码的无限画布多 Agent 工作区 | The infinite canvas multi-agent workspace for AI coding**
+**Your infinite canvas workspace for agents, tasks, knowledge, and research.**
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Status](https://img.shields.io/badge/status-alpha-orange.svg) ![Electron](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![Status](https://img.shields.io/badge/status-alpha-orange.svg)]()
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)]()
+[![简体中文](https://img.shields.io/badge/Language-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-blue)](./README_ZH.md)
 
-**OpenCove 是一个面向 AI 编码的无限画布多 Agent 工作区。**
+<img src="./assets/images/opencove_header_readme.jpg" alt="OpenCove Header" width="100%" />
 
-当 AI 编码不再仅仅是“对话”，而变成复杂的“任务编排”时，传统的 IDE 终端和聊天窗口已捉襟见肘。OpenCove 提供了一个**无限的深空画布**，让你在一个视图中指挥多个 AI Agent，管理任务流转，并将破碎的上下文重新通过空间组织起来。
+</div>
 
-告别混乱的 Tab 切换，拥抱**可视化、空间化**的 AI 协作新范式。
+## 📖 What is OpenCove?
 
----
+OpenCove is a **spatial development workspace** built for the AI era. It reimagines traditional development tools by replacing split-panels and disjointed tabs with a virtually boundless 2D canvas.
 
-## ✨ 核心特性
+Here, your **AI Agents (like Claude Code / Codex)**, **Terminals**, **Tasks**, and **Notes** exist on the same visual plane. By organizing human intuition and agent-driven automation spatially, OpenCove allows you to see the true context of your work at all times.
 
-### 🌌 无限深空画布 (Infinite Canvas)
-在一个近乎无限的二维平面上组织你的工作。将终端、Agent 会话、任务卡片像思维导图一样自由摆放。
-- **空间记忆**：利用人类的空间记忆能力，将左上角设为“后端服务”，右下角设为“前端调试”。
-- **全局概览**：通过缩放（Zoom）瞬间从宏观视角俯瞰整个项目，或潜入微观细节。
-- **持久化视口**：你的每一次拖拽和缩放都会被保存，下次打开即是上次的“案发现场”。
+## ✨ Highlights
 
-### 🤖 多 Agent 协同编排 (Agent Orchestration)
-不要让你的 Agent 局限在单一的侧边栏里。在 OpenCove 中，你可以同时运行多个 Agent 实例。
-- **并行执行**：左侧运行 **Claude Code** 进行架构重构，右侧运行 **Codex** 编写单元测试。
-- **可视化状态**：直观看到每个 Agent 目前是正在思考、执行命令，还是等待确认。
-- **统一协议**：无论底层是 Claude 还是 OpenAI，OpenCove 用统一的协议管理它们的 PTY 生命周期。
+- **🌌 Infinite Spatial Canvas**: Break free from rigid layouts. Freely arrange terminals, docs, and agent interfaces to construct a holistic view of your workflow.
+- **🤖 Native CLI Agent Support**: Deeply optimized for CLI AI tools like `Claude Code` and `Codex`. Easily spawn them, compare them side-by-side, and monitor their state live.
+- **🧠 Visualized Context Management**: Keep your task planning and actual execution side by side. Crucial context no longer gets buried inside scrolling chat histories.
+- **💾 Persistent State & Memory**: OpenCove remembers the scene. Your viewport, layout, terminal output, and agent states survive project switches and restarts, picking up right where you left off.
+- **🗂️ Fine-Grained Workspace Isolation**: Separate your workstreams natively using directories and git worktrees, ensuring that context never bleeds across projects.
 
-### 🔮 Cyber-Glass 沉浸式 UI
-专为开发者打造的 **Deep Space Cyber-Glass** 设计语言。
-- **深空美学**：极暗背景 + 霓虹微光，专注编码不刺眼。
-- **毛玻璃质感**：现代化的半透明容器，层级分明，极具呼吸感。
-- **交互细节**：碰撞检测、平滑动画、磁吸对齐，每一个交互都经过精心打磨。
+## 💡 Why OpenCove?
 
----
+In traditional dev environments or linear chat bots, context is quickly lost to scrolling or tucked away in hidden tabs.
 
-## 🚀 为什么选择 OpenCove？
-
-| 传统模式 | OpenCove 模式 |
+| Pain Point (Traditional) | The OpenCove Workspace |
 | :--- | :--- |
-| **线性对话**：上下文随聊天记录被顶走，回溯困难。 | **空间节点**：关键信息永久驻留在画布上，所见即所得。 |
-| **单任务**：一次只能和一个 Agent 聊一件事。 | **多线程**：同时指挥多个 Agent 处理不同模块，并行不悖。 |
-| **黑盒运行**：不知道 Agent 在终端里偷偷干了什么。 | **透明监管**：Agent 的每一次终端操作都实时呈现在 PTY 节点中。 |
+| **Linear Amnesia**: Context gets buried in endless chat histories. | **Spatial Context**: Crucial decisions and active tasks stay visible on the canvas. |
+| **Single-Pane Bottlenecks**: Switching tabs breaks your train of thought. | **Parallel Execution**: Observe multiple agents working simultaneously without losing focus. |
+| **Opaque Automation**: It's hard to follow what background agents are doing. | **Transparent Actions**: Terminal executions and side-effects are rendered right before your eyes. |
 
----
+## 🚀 Getting Started
 
-## 🛠️ 快速开始
+*OpenCove is currently in Alpha. We welcome early adopters and power users to test it out.*
 
-OpenCove 目前处于 Alpha 阶段，建议开发者尝鲜。
+### Download
 
-## 📦 下载与安装（macOS）
+We distribute pre-compiled binaries via our [GitHub Releases](https://github.com/DeadWaveWave/opencove/releases) page:
 
-建议从 GitHub Releases 下载 `.dmg` / `.zip`。
+- **Stable Build**: Recommended for general users.
+- **Nightly Build**: Contains the bleeding-edge features.
 
-> 当前 Release 构建**未做 Apple Developer ID 签名/公证**。首次打开若被 Gatekeeper 拦截，可用以下方式处理：
->
-> - Finder：右键 `OpenCove.app` → **打开** → 再次确认
-> - 或终端（拷贝到 Applications 后）：`xattr -dr com.apple.quarantine /Applications/OpenCove.app`
+Downloads are available for macOS, Windows, and Linux (`.dmg`, `.exe`, `.zip`, etc.).
 
-### 前置要求
+> **⚠️ macOS Users Note**:
+> The current releases are **not signed or notarized** with an Apple Developer ID. If Gatekeeper blocks the app, run this in your terminal:
+> ```bash
+> xattr -dr com.apple.quarantine /Applications/OpenCove.app
+> ```
+
+### Building from Source
+
+#### Prerequisites
 - Node.js `>= 22`
 - pnpm `>= 9`
-- 建议安装 `claude` 或 `codex` CLI 以体验完整 Agent 功能
+- (Recommended) Globally install `Claude Code` or `Codex` to experience full agent workflows.
 
-### 安装与运行
+#### Build Instructions
 
 ```bash
-# 克隆仓库
+# 1. Clone the repository
 git clone https://github.com/DeadWaveWave/opencove.git
+cd opencove
 
-# 安装依赖
+# 2. Install dependencies
 pnpm install
 
-# 启动开发环境
+# 3. Start the dev environment
 pnpm dev
 ```
 
-更多发布/打包说明见 `docs/RELEASING.md`。
+> See [RELEASING.md](docs/RELEASING.md) for more packager and build documentation.
 
----
+## 🏗️ Technical Architecture
 
-## 🏗️ 技术栈
+OpenCove is built with modern, high-performance web standards:
 
-建立在现代 Web 标准与 Electron 之上：
-- **Electron + React + TypeScript** (`electron-vite`)
-- **@xyflow/react** (原 ReactFlow) 驱动无限画布
-- **xterm.js + node-pty** 提供工业级终端能力
-- **Vitest + Playwright** 确保稳如磐石的质量
+- **Framework**: Electron + React + TypeScript (via `electron-vite`)
+- **Canvas Engine**: `@xyflow/react` for buttery smooth infinite canvas interactions.
+- **Underlying Terminal**: `xterm.js` and `node-pty` powering full-fledged PTY runtimes.
+- **Testing**: `Vitest` and `Playwright` for robust unit and E2E regression testing.
 
-## 🤝 参与贡献
+## 🤝 Contributing
 
-OpenCove 是一个开源项目，我们需要你的帮助来定义 AI 时代的 IDE 形态。
-详见 [CONTRIBUTING.md](./CONTRIBUTING.md) 和 [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)。
-如需获取帮助或了解支持边界，见 [SUPPORT.md](./SUPPORT.md)。
+OpenCove is open source. We need your help to define what the IDE of the AI intelligence era should look like.
+Read our guidelines below:
+
+- [Contributing Guidelines (CONTRIBUTING.md)](./CONTRIBUTING.md)
+- [Code of Conduct (CODE_OF_CONDUCT.md)](./CODE_OF_CONDUCT.md)
+- [Support (SUPPORT.md)](./SUPPORT.md)
 
 ---
 
 <div align="center">
-  <sub>Built with ❤️ by the OpenCove Team. MIT License.</sub>
+
+<p>Redefining dev environments for the modern web.<br>Built with ❤️ by the OpenCove Team.</p>
+
+[![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+
 </div>

@@ -1,24 +1,29 @@
 # Contributing to OpenCove 🤝
 
-First off, thanks for taking the time to contribute! 🎉
+First off, thank you for considering contributing to OpenCove! 🎉
 
-OpenCove is an ambitious project to redefine how we build software with AI. Whether you're fixing a bug, improving documentation, or proposing a new feature, your help is welcome.
+OpenCove is an ambitious open-source project aimed at redefining how we interact with AI agents in a spatial workspace. Building a high-performance, complex desktop OS-like environment requires discipline. To ensure we can iterate rapidly without breaking the core experience, we maintain strict engineering and architectural standards.
 
-For repository workflow and architecture rules, read `DEVELOPMENT.md` first. This document is the contributor-facing companion, focused on reviewability and high-risk change discipline.
+> **🚨 CRITICAL FIRST STEP:**
+> Before you write any code, you **MUST** read [DEVELOPMENT.md](./DEVELOPMENT.md). 
+> It contains our architectural boundaries, state ownership rules, and execution workflows. **All PRs are expected to strictly adhere to the guidelines outlined there.**
+
+---
 
 ## 🧭 Table of Contents
 
 - [Code of Conduct](#code-of-conduct)
-- [Getting Started](#-getting-started)
 - [Development Workflow](#-development-workflow)
+- [The Golden Rules of Engineering](#-the-golden-rules-of-engineering)
 - [Pull Request Process](#-pull-request-process)
-- [Style Guide](#-style-guide)
+
+---
 
 ## Code of Conduct
 
 This project and everyone participating in it is governed by the [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
 
-## 🚀 Getting Started
+## 💻 Development Workflow
 
 ### Prerequisites
 
@@ -28,62 +33,54 @@ This project and everyone participating in it is governed by the [Code of Conduc
 
 ### Setup
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/DeadWaveWave/opencove.git
-   cd OpenCove
-   ```
+```bash
+# 1. Clone the repository
+git clone https://github.com/DeadWaveWave/opencove.git
+cd opencove
 
-2. **Install dependencies**
-   ```bash
-   pnpm install
-   ```
+# 2. Install dependencies
+pnpm install
 
-3. **Start the development environment**
-   ```bash
-   pnpm dev
-   ```
-   This will launch the Electron app in development mode with HMR enabled.
+# 3. Start the dev environment
+pnpm dev
+```
 
-## 💻 Development Workflow
+### Verification & CI
 
-### Branching Model
-
-- **`main`**: The stable branch.
-- **Feature Branches**: Create branches from `main` for your work.
-  - Format: `feat/your-feature-name` or `fix/your-bug-fix`
-
-### Verification Commands
-
-Before submitting a PR, ensure your changes pass our quality checks:
+Before submitting a Pull Request, you must ensure your code meets our quality bar.
 
 | Command | Description |
 | :--- | :--- |
-| `pnpm lint` | Check for linting errors |
-| `pnpm format:check` | Verify code formatting |
-| `pnpm check` | Type-check TypeScript files |
-| `pnpm test -- --run` | Run unit tests |
-| `pnpm test:e2e` | Run Playwright end-to-end tests (requires build) |
-
-> **Tip:** If `pnpm test:e2e` fails, try running `pnpm build` first to ensure the Electron binary is up to date.
->
-> **High-risk rule:** if your change touches lifecycle, persistence, IPC, watcher coordination, or restart behavior, at least one cross-boundary regression test is expected in addition to local unit coverage.
-
-## 📥 Pull Request Process
-
-1. **Small & Focused**: Keep PRs small. If a PR does two things, split it into two.
-2. **Descriptive Title**: Use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) (e.g., `feat: implementation agent flow`, `fix: terminal resize jitter`).
-3. **Context is King**: In your PR description, explain *why* you made this change, not just *what* you changed. For high-risk changes, also state the state owner, the key invariant(s), and the regression layer you chose. Attach screenshots or GIFs for UI changes.
-4. **Test coverage**: Ensure new features have corresponding tests, and ensure high-risk cross-boundary changes include at least one regression that exercises the boundary where the bug class could recur.
-
-## 🎨 Style Guide
-
-- **TypeScript**: Strict mode is on. No `any` unless absolutely necessary.
-- **Components**: Functional components with hooks.
-- **Styling**: We use generic CSS/Tailwind (adhere to existing patterns).
-- **Architecture**: Follow the "Clean Architecture" separation in `src/main` vs `src/renderer`.
-- **SOLID, selectively**: Treat `SOLID` as a design check, not a ritual. In OpenCove, `S / I / D` usually matter most, `O` matters when extending providers/adapters/watchers, and `L` only matters when true subtype substitution exists.
+| `pnpm pre-commit` | **The ultimate gatekeeper.** Runs type checks, linting, formatting, and tests. |
+| `pnpm test -- --run` | Runs the unit test suite natively. |
+| `pnpm test:e2e` | Runs Playwright end-to-end tests (requires `pnpm build` first). |
 
 ---
 
-**Happy Coding!** 🚀
+## 📐 The Golden Rules of Engineering
+
+To get your PR merged quickly, your contribution must reflect the values detailed in `DEVELOPMENT.md`:
+
+1. **Zero Failing CI**: Your PR **MUST pass all CI checks** (`pnpm pre-commit` must be completely green). We do not merge code with failing tests, type errors, or lint warnings.
+2. **Lock Behavior with Tests**: Every meaningful code change (especially bug fixes and new features) **MUST** include corresponding tests to lock down the behavior. Do not just fix the bug; write the test that proves the bug can never return.
+3. **Respect State Ownership**: If your PR touches persistence, IPC boundary, or recovery state, explicitly document who the "owner" of that state is. Multiple writers to the same source of truth will be rejected.
+4. **Clean Architecture**: Never mix IO/IPC concerns with UI rendering. Keep the `Main`, `Preload`, and `Renderer` boundaries mathematically clean.
+
+---
+
+## 📥 Pull Request Process
+
+1. **Keep it Focused**: A PR should do one thing well. If you are fixing a bug and refactoring a module, split them into two separate PRs.
+2. **Conventional Commits**: Use conventional prefixes for your PR titles (e.g., `feat: spatial task layout`, `fix: terminal resize panic`, `chore: update deps`).
+3. **Prove Your Work**: 
+   - If it's a UI change, **attach screenshots or a screen recording**.
+   - If it's a runtime-risk change, explain the invariants you considered and the test layer you chose to prove them.
+4. **Self-Review**: Review your own diff before submitting. Make sure no console logs, `any` types, or commented-out code slipped through.
+
+---
+
+<div align="center">
+
+**Happy Coding! 🚀 Let's build the future of AI IDEs together.**
+
+</div>

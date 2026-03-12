@@ -1,8 +1,8 @@
 {
   "name": "opencove",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "productName": "OpenCove",
-  "description": "An infinite canvas multi-agent workspace for AI coding.",
+  "description": "Your infinite canvas workspace for agents, tasks, knowledge, and research.",
   "main": "./out/main/index.js",
   "author": {
     "name": "deadwavewave",

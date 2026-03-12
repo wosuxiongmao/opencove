@@ -17,8 +17,8 @@
 
 本项目当前只区分两个发行渠道：
 
-- `stable`：给普通用户安装的正式版，使用纯版本 tag，如 `v0.1.0`
-- `nightly`：给你自己和早期测试者抢先试用的预发布版，使用带 nightly 后缀的 tag，如 `v0.1.0-nightly.20260309.1`
+- `stable`：给普通用户安装的正式版，使用纯版本 tag，如 `v0.2.0`
+- `nightly`：给你自己和早期测试者抢先试用的预发布版，使用带 nightly 后缀的 tag，如 `v0.2.0-nightly.20260312.1`
 
 建议的判断标准：
 
@@ -32,7 +32,7 @@
 
 ## GitHub：打 Tag 自动打包（unsigned）
 
-本仓库已配置 GitHub Actions：当你 push 形如 `v*` 的 tag 时，会自动构建 `macOS / Windows / Linux` 三端产物，并创建同一个 GitHub Release，上传：
+本仓库已配置 GitHub Actions：当你 push 形如 `v*` 的 tag 时，会自动构建 `macOS / Windows / Linux` 三端产物，并自动创建对应的 GitHub Release。无需手动打包或手动上传产物。上传内容包括：
 - macOS 产物（如 `*.dmg`, `*.zip`）
 - Windows 产物（如 `*.exe`）
 - Linux 产物（如 `*.AppImage`）
@@ -40,8 +40,8 @@
 
 其中：
 
-- `v0.1.0` 会创建正式 `stable` release
-- `v0.1.0-nightly.20260309.1` 会创建 `nightly` prerelease
+- `v0.2.0` 会创建正式 `stable` release
+- `v0.2.0-nightly.20260312.1` 会创建 `nightly` prerelease
 
 ### Stable 流程
 
@@ -58,19 +58,22 @@ pnpm release:version 0.2.0
 ```
 
 2) 填好 `CHANGELOG.md` 新增版本段落
-3) 运行 `pnpm pre-commit`
-4) 提交 release 准备改动到 `main`
-5) 创建并 push tag
+   - 若本次为 `major` 或 `minor` 版本（例如 `0.1.0 -> 0.2.0`、`0.x -> 1.0.0`），必须补一段 `### ✨ Highlights`
+   - 若本次为 `patch` 版本（例如 `0.2.0 -> 0.2.1`），不强制要求 `Highlights`
+3) 更新 README 顶部的 `Important Announcement / 重要公告`，用 1-3 句短文概括这次对外想传达的重点
+4) 运行 `pnpm pre-commit`
+5) 提交 release 准备改动到 `main`
+6) 创建并 push tag
 
 ```bash
-git tag v0.1.0
+git tag v0.2.0
 git push origin main --tags
 ```
 
 如需先预览下一版而不落盘：
 
 ```bash
-node scripts/prepare-release.mjs patch --dry-run
+node scripts/prepare-release.mjs 0.2.0 --dry-run
 ```
 
 ### Nightly 流程
@@ -84,15 +87,21 @@ node scripts/prepare-release.mjs patch --dry-run
 2) 用当天日期 + 递增序号创建 nightly tag
 
 ```bash
-git tag v0.1.0-nightly.20260309.1
-git push origin v0.1.0-nightly.20260309.1
+git tag v0.2.0-nightly.20260312.1
+git push origin v0.2.0-nightly.20260312.1
 ```
 
 约定建议：
 
 - 同一天第一次 nightly 用 `.1`
 - 同一天第二次 nightly 用 `.2`
-- 如果下一次 stable 准备发 `v0.1.1`，nightly 也可以提前切到 `v0.1.1-nightly.20260310.1`
+- 如果下一次 stable 准备发 `v0.2.1`，nightly 也可以提前切到 `v0.2.1-nightly.20260313.1`
+
+补充说明：
+
+- `stable` 路径可以先运行 `pnpm release:version 0.2.0`，自动更新 `package.json` 和 `CHANGELOG.md` 模板。
+- `prepare-release` 会在 `major / minor` 版本自动插入 `✨ Highlights` 模板；`patch` 版本不会插入。
+- `nightly` 路径不需要运行 release 准备脚本；只要 push 合规 tag，CI 就会自动打包并发布 GitHub prerelease。
 
 ## 未签名/未公证的安装说明（给用户）
 

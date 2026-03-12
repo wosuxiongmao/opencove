@@ -27,6 +27,13 @@ function formatVersion(version) {
   return `${version.major}.${version.minor}.${version.patch}`
 }
 
+function isMinorOrMajorRelease(currentVersion, nextVersion) {
+  return (
+    nextVersion.major > currentVersion.major ||
+    (nextVersion.major === currentVersion.major && nextVersion.minor > currentVersion.minor)
+  )
+}
+
 function bumpVersion(currentVersion, releaseType) {
   if (releaseType === 'patch') {
     return {
@@ -55,23 +62,24 @@ function bumpVersion(currentVersion, releaseType) {
   return parseVersion(releaseType)
 }
 
-function buildReleaseSection(nextVersion, releaseDate) {
-  return [
+function buildReleaseSection(nextVersion, releaseDate, includeHighlights) {
+  const section = [
     `## [${nextVersion}] - ${releaseDate}`,
     '',
-    '### Added',
-    '- TBD',
+    `Welcome to OpenCove ${nextVersion}! This release focuses on...`,
     '',
-    '### Changed',
-    '- TBD',
-    '',
-    '### Fixed',
-    '- TBD',
-    '',
-  ].join('\n')
+  ]
+
+  if (includeHighlights) {
+    section.push('### ✨ Highlights', '- **Feature Name**: Description', '')
+  }
+
+  section.push('### 🚀 Added', '- TBD', '', '### 💅 Changed', '- TBD', '', '### 🐞 Fixed', '- TBD', '')
+
+  return section.join('\n')
 }
 
-function updateChangelog(changelog, nextVersion, releaseDate) {
+function updateChangelog(changelog, nextVersion, releaseDate, includeHighlights) {
   const versionHeading = `## [${nextVersion}] - ${releaseDate}`
   if (changelog.includes(versionHeading)) {
     return changelog
@@ -85,7 +93,7 @@ function updateChangelog(changelog, nextVersion, releaseDate) {
 
   const before = changelog.slice(0, insertAt + separator.length)
   const after = changelog.slice(insertAt + separator.length)
-  return `${before}${buildReleaseSection(nextVersion, releaseDate)}${after}`
+  return `${before}${buildReleaseSection(nextVersion, releaseDate, includeHighlights)}${after}`
 }
 
 function printUsage() {
@@ -118,12 +126,18 @@ if (!rawTarget) {
     }
 
     const releaseDate = new Date().toISOString().slice(0, 10)
+    const includeHighlights = isMinorOrMajorRelease(currentVersion, nextVersionParts)
     const nextPackageJson = {
       ...packageJson,
       version: nextVersion,
     }
     const currentChangelog = await readFile(changelogPath, 'utf8')
-    const nextChangelog = updateChangelog(currentChangelog, nextVersion, releaseDate)
+    const nextChangelog = updateChangelog(
+      currentChangelog,
+      nextVersion,
+      releaseDate,
+      includeHighlights,
+    )
 
     if (!dryRun) {
       await writeFile(packageJsonPath, `${JSON.stringify(nextPackageJson, null, 2)}\n`)
@@ -136,6 +150,7 @@ if (!rawTarget) {
         `${actionLabel} release ${currentVersionString} -> ${nextVersion}`,
         `- package.json version: ${nextVersion}`,
         `- changelog section: ## [${nextVersion}] - ${releaseDate}`,
+        `- highlights template: ${includeHighlights ? 'included' : 'not required'}`,
         '',
         'Next steps:',
         '1. Fill in the new CHANGELOG section.',
