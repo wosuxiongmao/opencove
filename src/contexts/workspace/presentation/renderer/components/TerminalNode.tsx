@@ -10,7 +10,11 @@ import {
   createTerminalCommandInputState,
   parseTerminalCommandInput,
 } from './terminalNode/commandInput'
-import { createPtyWriteQueue, registerXtermPasteGuards } from './terminalNode/inputBridge'
+import {
+  createPtyWriteQueue,
+  handleTerminalCustomKeyEvent,
+  registerXtermPasteGuards,
+} from './terminalNode/inputBridge'
 import { mergeScrollbackSnapshots, resolveScrollbackDelta } from './terminalNode/scrollback'
 import {
   clearCachedTerminalScreenStateInvalidation,
@@ -22,6 +26,7 @@ import { TerminalNodeHeader } from './terminalNode/TerminalNodeHeader'
 import { syncTerminalNodeSize } from './terminalNode/syncTerminalNodeSize'
 import { resolveSuffixPrefixOverlap } from './terminalNode/overlap'
 import { resolveTerminalNodeInteraction } from './terminalNode/interaction'
+import { registerTerminalSelectionTestHandle } from './terminalNode/testHarness'
 import { useTerminalResize } from './terminalNode/useTerminalResize'
 import { useTerminalScrollback } from './terminalNode/useScrollback'
 import { shouldStopWheelPropagation } from './terminalNode/wheel'
@@ -146,31 +151,24 @@ export function TerminalNode({
     fitAddonRef.current = fitAddon
 
     let disposeXtermPasteGuards: () => void = () => undefined
+    let disposeTerminalSelectionTestHandle: () => void = () => undefined
     const ptyWriteQueue = createPtyWriteQueue(data =>
       window.opencoveApi.pty.write({ sessionId, data }),
     )
-    terminal.attachCustomKeyEventHandler(event => {
-      if (
-        event.key !== 'Enter' ||
-        !event.shiftKey ||
-        event.altKey ||
-        event.ctrlKey ||
-        event.metaKey
-      ) {
-        return true
-      }
-
-      if (event.type === 'keydown') {
-        ptyWriteQueue.enqueue('\u001b\r')
-        ptyWriteQueue.flush()
-      }
-
-      return false
-    })
+    terminal.attachCustomKeyEventHandler(event =>
+      handleTerminalCustomKeyEvent({
+        event,
+        ptyWriteQueue,
+        terminal,
+      }),
+    )
 
     if (containerRef.current) {
       terminal.open(containerRef.current)
       disposeXtermPasteGuards = registerXtermPasteGuards(containerRef.current)
+      if (window.opencoveApi.meta.isTest) {
+        disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(nodeId, terminal)
+      }
       requestAnimationFrame(syncTerminalSize)
       if (window.opencoveApi.meta.isTest) {
         terminal.focus()
@@ -371,6 +369,7 @@ export function TerminalNode({
       unsubscribeData()
       unsubscribeExit()
       disposeXtermPasteGuards()
+      disposeTerminalSelectionTestHandle()
       ptyWriteQueue.dispose()
       if (isInvalidated) {
         cancelScrollbackPublish()
