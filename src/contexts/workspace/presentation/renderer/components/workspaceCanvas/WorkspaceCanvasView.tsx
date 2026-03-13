@@ -292,7 +292,18 @@ export function WorkspaceCanvasView({
       data-selected-node-count={selectedNodeCount}
       onClick={onCanvasClick}
       onDoubleClickCapture={handleCanvasDoubleClickCapture}
-      onPointerDownCapture={handleCanvasPointerDownCapture}
+      onPointerDownCapture={event => {
+        if (
+          event.button === 0 &&
+          (contextMenu !== null || spaceActionMenu !== null) &&
+          event.target instanceof Element &&
+          !event.target.closest('.workspace-context-menu')
+        ) {
+          closeContextMenu()
+        }
+
+        handleCanvasPointerDownCapture(event)
+      }}
       onPointerMoveCapture={handleCanvasPointerMoveCapture}
       onPointerUpCapture={handleCanvasPointerUpCapture}
       onWheelCapture={event => {
