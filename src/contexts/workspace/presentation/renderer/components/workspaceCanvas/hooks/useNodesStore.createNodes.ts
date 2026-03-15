@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import type { Node } from '@xyflow/react'
 import type { MutableRefObject } from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import type { Point, TaskPriority, TerminalNodeData } from '../../../types'
 import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
 import { findNearestFreePositionOnRight } from '../../../utils/collision'
@@ -37,6 +38,8 @@ export function useWorkspaceCanvasNodeCreation({
   UseWorkspaceCanvasNodesStoreResult,
   'createNodeForSession' | 'createNoteNode' | 'createTaskNode'
 > {
+  const { t } = useTranslation()
+
   const createNodeForSession = useCallback(
     async ({
       sessionId,
@@ -61,7 +64,7 @@ export function useWorkspaceCanvasNodeCreation({
 
       if (canPlace !== true) {
         await window.opencoveApi.pty.kill({ sessionId })
-        onShowMessage?.('当前视图附近没有可用空位，请先移动或关闭部分终端窗口。', 'warning')
+        onShowMessage?.(t('messages.noTerminalSlotNearby'), 'warning')
         return null
       }
 
@@ -119,6 +122,7 @@ export function useWorkspaceCanvasNodeCreation({
       pushBlockingWindowsRight,
       setNodes,
       onShowMessage,
+      t,
     ],
   )
 
@@ -132,7 +136,6 @@ export function useWorkspaceCanvasNodeCreation({
                 DEFAULT_NOTE_WINDOW_SIZE,
                 nodesRef.current,
               )
-
               return {
                 placement: placement ?? anchor,
                 canPlace: placement !== null,
@@ -148,8 +151,8 @@ export function useWorkspaceCanvasNodeCreation({
       if (resolvedPlacement.canPlace !== true) {
         onShowMessage?.(
           options.placementStrategy === 'right-no-push'
-            ? '当前 Agent 右侧没有可用空位，请先移动或关闭部分窗口。'
-            : '当前视图附近没有可用空位，请先移动或关闭部分窗口。',
+            ? t('messages.noWindowSlotOnRight')
+            : t('messages.noWindowSlotNearby'),
           'warning',
         )
         return null
@@ -186,7 +189,7 @@ export function useWorkspaceCanvasNodeCreation({
       onRequestPersistFlush?.()
       return nextNode
     },
-    [nodesRef, onRequestPersistFlush, onShowMessage, pushBlockingWindowsRight, setNodes],
+    [nodesRef, onRequestPersistFlush, onShowMessage, pushBlockingWindowsRight, setNodes, t],
   )
 
   const createTaskNode = useCallback(
@@ -208,7 +211,7 @@ export function useWorkspaceCanvasNodeCreation({
       })
 
       if (canPlace !== true) {
-        onShowMessage?.('当前视图附近没有可用空位，请先移动或关闭部分窗口。', 'warning')
+        onShowMessage?.(t('messages.noWindowSlotNearby'), 'warning')
         return null
       }
 
@@ -254,7 +257,7 @@ export function useWorkspaceCanvasNodeCreation({
       onRequestPersistFlush?.()
       return nextNode
     },
-    [nodesRef, onRequestPersistFlush, onShowMessage, pushBlockingWindowsRight, setNodes],
+    [nodesRef, onRequestPersistFlush, onShowMessage, pushBlockingWindowsRight, setNodes, t],
   )
 
   return {

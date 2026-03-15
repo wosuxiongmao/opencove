@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState, type JSX } from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import { FileText, LoaderCircle } from 'lucide-react'
 import type { AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
-import { getStatusClassName, getStatusLabel } from './status'
+import { getStatusClassName } from './status'
 
 interface TerminalNodeHeaderProps {
   title: string
@@ -22,6 +23,7 @@ export function TerminalNodeHeader({
   onClose,
   onSaveLastMessageToNote,
 }: TerminalNodeHeaderProps): JSX.Element {
+  const { t } = useTranslation()
   const [isTitleEditing, setIsTitleEditing] = useState(false)
   const [titleDraft, setTitleDraft] = useState(title)
   const [isSavingLastMessageToNote, setIsSavingLastMessageToNote] = useState(false)
@@ -76,6 +78,24 @@ export function TerminalNodeHeader({
     },
     [isTitleEditable, isTitleEditing],
   )
+
+  const statusLabel = (() => {
+    switch (status) {
+      case 'standby':
+        return t('agentRuntime.standby')
+      case 'exited':
+        return t('agentRuntime.exited')
+      case 'failed':
+        return t('agentRuntime.failed')
+      case 'stopped':
+        return t('agentRuntime.stopped')
+      case 'restoring':
+        return t('agentRuntime.restoring')
+      case 'running':
+      default:
+        return t('agentRuntime.working')
+    }
+  })()
 
   return (
     <div className="terminal-node__header" data-node-drag-handle="true" onClick={handleHeaderClick}>
@@ -133,15 +153,17 @@ export function TerminalNodeHeader({
           {directoryMismatch ? (
             <span
               className="terminal-node__badge terminal-node__badge--warning"
-              title={`Bound directory: ${directoryMismatch.executionDirectory}
-Current directory: ${directoryMismatch.expectedDirectory}`}
+              title={t('terminalNodeHeader.directoryMismatchTitle', {
+                executionDirectory: directoryMismatch.executionDirectory,
+                expectedDirectory: directoryMismatch.expectedDirectory,
+              })}
             >
-              DIR MISMATCH
+              {t('terminalNodeHeader.directoryMismatch')}
             </span>
           ) : null}
           {isAgentNode ? (
             <span className={`terminal-node__status ${getStatusClassName(status)}`}>
-              {getStatusLabel(status)}
+              {statusLabel}
             </span>
           ) : null}
         </div>
@@ -152,11 +174,11 @@ Current directory: ${directoryMismatch.expectedDirectory}`}
           type="button"
           className="terminal-node__action terminal-node__action--icon nodrag"
           data-testid="terminal-node-save-last-message"
-          aria-label="Save last agent message as note"
+          aria-label={t('terminalNodeHeader.saveLastMessageToNote')}
           title={
             isSavingLastMessageToNote
-              ? 'Saving last agent message as note'
-              : 'Save last agent message as note'
+              ? t('terminalNodeHeader.savingLastMessageToNote')
+              : t('terminalNodeHeader.saveLastMessageToNote')
           }
           disabled={isSavingLastMessageToNote}
           onClick={async event => {

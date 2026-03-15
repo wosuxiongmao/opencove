@@ -1,5 +1,6 @@
 import { useCallback, type MutableRefObject } from 'react'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
+import type { TranslateFn } from '@app/renderer/i18n'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import { expandSpaceToFitOwnedNodesAndPushAway } from '../../../utils/spaceAutoResize'
 import { sanitizeSpaces, validateSpaceTransfer } from '../helpers'
@@ -32,6 +33,7 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
   onRequestPersistFlush,
   onShowMessage,
   resolveSpaceAtPoint,
+  t,
 }: {
   workspacePath: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
@@ -41,6 +43,7 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   resolveSpaceAtPoint: (point: { x: number; y: number }) => WorkspaceSpaceState | null
+  t: TranslateFn
 }): (input: ApplyOwnershipForDropInput) => void {
   return useCallback(
     ({
@@ -136,6 +139,7 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
           reactFlow.getNodes(),
           targetSpace,
           workspacePath,
+          t,
         )
 
         if (validationError) {
@@ -393,6 +397,7 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
       resolveSpaceAtPoint,
       setNodes,
       spacesRef,
+      t,
       workspacePath,
     ],
   )
