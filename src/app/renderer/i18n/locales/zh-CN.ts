@@ -58,6 +58,33 @@ export const zhCN = {
     tasks_one: '{{count}} 个任务',
     tasks_other: '{{count}} 个任务',
   },
+  appHeader: {
+    togglePrimarySidebar: '切换主侧边栏',
+    commandCenter: '命令中心',
+    commandCenterHint: '命令中心（{{primary}} / {{secondary}}）',
+    commandCenterFallbackTitle: '搜索',
+  },
+  commandCenter: {
+    title: '命令中心',
+    placeholder: '搜索项目、空间、命令…',
+    empty: '没有结果。',
+    metaEsc: 'Esc',
+    activeSpace: '空间：{{name}}',
+    sections: {
+      commands: '命令',
+      spaces: '空间',
+      projects: '项目',
+    },
+    commands: {
+      openSettings: '设置',
+      openSettingsHint: '打开设置',
+      showPrimarySidebar: '显示侧边栏',
+      hidePrimarySidebar: '隐藏侧边栏',
+      togglePrimarySidebarHint: '切换主侧边栏',
+      addProject: '添加项目',
+      addProjectHint: '添加一个项目文件夹',
+    },
+  },
   workspaceEmptyState: {
     title: '添加一个项目开始使用',
     description: '每个项目都有自己的无限画布和终端。',
