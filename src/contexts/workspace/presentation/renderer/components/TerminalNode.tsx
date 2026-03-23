@@ -36,6 +36,7 @@ import { revealHydratedTerminal } from './terminalNode/revealHydratedTerminal'
 import { createTerminalOutputScheduler } from './terminalNode/outputScheduler'
 import { selectViewportInteractionActive } from './terminalNode/reactFlowState'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
+import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import type { TerminalNodeProps } from './TerminalNode.types'
 
 export function TerminalNode({
@@ -114,6 +115,7 @@ export function TerminalNode({
     position,
     width,
     height,
+    minSize: resolveCanonicalNodeMinSize(kind),
     onResize,
     syncTerminalSize,
     scheduleScrollbackPublish,
