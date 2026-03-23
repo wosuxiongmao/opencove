@@ -45,46 +45,11 @@ export const DEFAULT_UI_LANGUAGE: UiLanguage = 'en'
 const MIN_LEGACY_UI_FONT_SCALE_PERCENT = 85
 const MAX_LEGACY_UI_FONT_SCALE_PERCENT = 140
 
-export const AGENT_PROVIDER_LABEL: Record<AgentProvider, string> = {
-  'claude-code': 'Claude Code',
-  codex: 'Codex',
-  opencode: 'OpenCode',
-  gemini: 'Gemini CLI',
-}
-
-export interface AgentProviderCapabilities {
-  taskTitle: boolean
-  worktreeNameSuggestion: boolean
-  runtimeObservation: 'jsonl' | 'provider-api' | 'none'
-  experimental: boolean
-}
-
-export const AGENT_PROVIDER_CAPABILITIES: Record<AgentProvider, AgentProviderCapabilities> = {
-  'claude-code': {
-    taskTitle: true,
-    worktreeNameSuggestion: true,
-    runtimeObservation: 'jsonl',
-    experimental: false,
-  },
-  codex: {
-    taskTitle: true,
-    worktreeNameSuggestion: true,
-    runtimeObservation: 'jsonl',
-    experimental: false,
-  },
-  opencode: {
-    taskTitle: false,
-    worktreeNameSuggestion: false,
-    runtimeObservation: 'provider-api',
-    experimental: false,
-  },
-  gemini: {
-    taskTitle: false,
-    worktreeNameSuggestion: false,
-    runtimeObservation: 'none',
-    experimental: false,
-  },
-}
+export {
+  AGENT_PROVIDER_CAPABILITIES,
+  AGENT_PROVIDER_LABEL,
+  type AgentProviderCapabilities,
+} from './agentSettings.providerMeta'
 
 const DEFAULT_TASK_TITLE_PROVIDER: TaskTitleAgentProvider = 'codex'
 

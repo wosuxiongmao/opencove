@@ -26,6 +26,7 @@ import { resolveTerminalNodeFrameStyle } from './terminalNode/nodeFrameStyle'
 import { resolveActiveUiTheme, resolveTerminalTheme } from './terminalNode/theme'
 import { registerTerminalSelectionTestHandle } from './terminalNode/testHarness'
 import { patchXtermMouseServiceWithRetry } from './terminalNode/patchXtermMouseService'
+import { useTerminalThemeApplier } from './terminalNode/useTerminalThemeApplier'
 import { useTerminalBodyClickFallback } from './terminalNode/useTerminalBodyClickFallback'
 import { useTerminalResize } from './terminalNode/useTerminalResize'
 import { useTerminalScrollback } from './terminalNode/useScrollback'
@@ -108,15 +109,7 @@ export function TerminalNode({
       sessionId,
     })
   }, [sessionId])
-  const applyTerminalTheme = useCallback(() => {
-    const terminal = terminalRef.current
-    if (!terminal) {
-      return
-    }
-    terminal.options.theme = { ...resolveTerminalTheme() }
-    containerRef.current?.setAttribute('data-cove-terminal-theme', resolveActiveUiTheme())
-    terminal.refresh(0, Math.max(0, terminal.rows - 1))
-  }, [])
+  const applyTerminalTheme = useTerminalThemeApplier({ terminalRef, containerRef })
   const { draftFrame, handleResizePointerDown } = useTerminalResize({
     position,
     width,

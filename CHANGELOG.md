@@ -33,6 +33,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Task: Typing in the Task Name input no longer collapses Advanced Settings. (#48)
 - Improved canvas drag smoothness under heavy terminal output by throttling terminal screen writes during viewport interaction while keeping output live. (#50)
 - Normalized node resize and terminal selection drags while the canvas is zoomed. (#56)
+- Stabilized and optimized space-bounded push-away reflow during node dragging to prevent edge overlaps/stacking. (#57)
 
 ---
 

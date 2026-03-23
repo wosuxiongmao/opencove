@@ -25,35 +25,7 @@ export function WorkspaceCanvasInner({
   focusSequence,
 }: WorkspaceCanvasProps): React.JSX.Element {
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
-  const {
-    contextMenu,
-    setContextMenu,
-    isMinimapVisible,
-    setIsMinimapVisible,
-    selectedNodeIds,
-    setSelectedNodeIds,
-    selectedSpaceIds,
-    setSelectedSpaceIds,
-    setEmptySelectionPrompt,
-    detectedCanvasInputMode,
-    setDetectedCanvasInputMode,
-    isShiftPressed,
-    setIsShiftPressed,
-    canvasRef,
-    restoredViewportWorkspaceIdRef,
-    spacesRef,
-    selectedNodeIdsRef,
-    selectedSpaceIdsRef,
-    dragSelectedSpaceIdsRef,
-    selectionDraftRef,
-    selectionDraftUi,
-    setSelectionDraftUi,
-    inputModalityStateRef,
-    isShiftPressedRef,
-    trackpadGestureLockRef,
-    viewportRef,
-    flowNodes,
-  } = workspaceCanvasHooks.useWorkspaceCanvasState({
+  const canvasState = workspaceCanvasHooks.useWorkspaceCanvasState({
     nodes,
     spaces,
     viewport,
@@ -86,8 +58,8 @@ export function WorkspaceCanvasInner({
     createNoteNode,
     createTaskNode,
   } = workspaceCanvasHooks.useWorkspaceCanvasNodesStore({
-    nodes: flowNodes,
-    spacesRef,
+    nodes: canvasState.flowNodes,
+    spacesRef: canvasState.spacesRef,
     onNodesChange,
     onSpacesChange,
     onRequestPersistFlush,
@@ -97,7 +69,7 @@ export function WorkspaceCanvasInner({
   const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } =
     workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({
       workspacePath,
-      spacesRef,
+      spacesRef: canvasState.spacesRef,
       nodesRef,
       setNodes,
       onSpacesChange,
@@ -122,17 +94,17 @@ export function WorkspaceCanvasInner({
     activeSpaceId,
     workspacePath,
     reactFlow,
-    nodes: flowNodes,
+    nodes: canvasState.flowNodes,
     nodesRef,
     setNodes,
     spaces,
-    spacesRef,
-    selectedNodeIds,
-    selectedNodeIdsRef,
+    spacesRef: canvasState.spacesRef,
+    selectedNodeIds: canvasState.selectedNodeIds,
+    selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
     onSpacesChange,
     onRequestPersistFlush,
-    setContextMenu,
-    setEmptySelectionPrompt,
+    setContextMenu: canvasState.setContextMenu,
+    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     onShowMessage,
   })
   const { spaceFramePreview, handleSpaceDragHandlePointerDown } =
@@ -140,17 +112,17 @@ export function WorkspaceCanvasInner({
       workspaceId,
       reactFlow,
       nodesRef,
-      spacesRef,
-      selectedNodeIdsRef,
-      selectedSpaceIdsRef,
+      spacesRef: canvasState.spacesRef,
+      selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
+      selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
       setNodes,
       onSpacesChange,
-      setSelectedNodeIds,
-      setSelectedSpaceIds,
+      setSelectedNodeIds: canvasState.setSelectedNodeIds,
+      setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
       onRequestPersistFlush,
-      setContextMenu,
+      setContextMenu: canvasState.setContextMenu,
       cancelSpaceRename,
-      setEmptySelectionPrompt,
+      setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     })
   const {
     handleNodeDragStart,
@@ -163,12 +135,12 @@ export function WorkspaceCanvasInner({
   } = workspaceCanvasHooks.useWorkspaceCanvasSpaceOwnership({
     workspacePath,
     reactFlow,
-    spacesRef,
-    selectedNodeIdsRef,
-    setSelectedNodeIds,
-    selectedSpaceIdsRef,
-    setSelectedSpaceIds,
-    dragSelectedSpaceIdsRef,
+    spacesRef: canvasState.spacesRef,
+    selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
+    setSelectedNodeIds: canvasState.setSelectedNodeIds,
+    selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
+    setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
+    dragSelectedSpaceIdsRef: canvasState.dragSelectedSpaceIdsRef,
     exclusiveNodeDragAnchorIdRef,
     setNodes,
     onSpacesChange,
@@ -190,12 +162,12 @@ export function WorkspaceCanvasInner({
       workspacePath,
       nodesRef,
       setNodes,
-      spacesRef,
+      spacesRef: canvasState.spacesRef,
       onSpacesChange,
       onRequestPersistFlush,
       onShowMessage,
-      contextMenu,
-      setContextMenu,
+      contextMenu: canvasState.contextMenu,
+      setContextMenu: canvasState.setContextMenu,
       createNodeForSession,
       buildAgentNodeTitle,
     })
@@ -204,7 +176,7 @@ export function WorkspaceCanvasInner({
   )
   const { suggestTaskTitle } = workspaceCanvasHooks.useWorkspaceCanvasTaskActions({
     nodesRef,
-    spacesRef,
+    spacesRef: canvasState.spacesRef,
     onSpacesChange,
     setNodes,
     createNodeForSession,
@@ -238,11 +210,11 @@ export function WorkspaceCanvasInner({
     confirmNodeDelete,
   } = workspaceCanvasHooks.useWorkspaceCanvasTaskWindows({
     taskTagOptions,
-    contextMenu,
-    setContextMenu,
+    contextMenu: canvasState.contextMenu,
+    setContextMenu: canvasState.setContextMenu,
     nodesRef,
     setNodes,
-    spacesRef,
+    spacesRef: canvasState.spacesRef,
     onSpacesChange,
     onRequestPersistFlush,
     suggestTaskTitle,
@@ -257,36 +229,36 @@ export function WorkspaceCanvasInner({
     handleCanvasWheelCapture,
   } = workspaceCanvasHooks.useWorkspaceCanvasInputMode({
     canvasInputModeSetting: agentSettings.canvasInputMode,
-    detectedCanvasInputMode,
-    inputModalityStateRef,
-    setDetectedCanvasInputMode,
-    canvasRef,
-    trackpadGestureLockRef,
-    viewportRef,
+    detectedCanvasInputMode: canvasState.detectedCanvasInputMode,
+    inputModalityStateRef: canvasState.inputModalityStateRef,
+    setDetectedCanvasInputMode: canvasState.setDetectedCanvasInputMode,
+    canvasRef: canvasState.canvasRef,
+    trackpadGestureLockRef: canvasState.trackpadGestureLockRef,
+    viewportRef: canvasState.viewportRef,
     reactFlow,
     onViewportChange,
   })
   workspaceCanvasHooks.useWorkspaceCanvasLifecycle({
     workspaceId,
     persistedMinimapVisible,
-    setIsMinimapVisible,
-    setSelectedNodeIds,
-    setSelectedSpaceIds,
-    setContextMenu,
-    setEmptySelectionPrompt,
+    setIsMinimapVisible: canvasState.setIsMinimapVisible,
+    setSelectedNodeIds: canvasState.setSelectedNodeIds,
+    setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
+    setContextMenu: canvasState.setContextMenu,
+    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     cancelSpaceRename,
-    selectionDraftRef,
-    trackpadGestureLockRef,
-    restoredViewportWorkspaceIdRef,
+    selectionDraftRef: canvasState.selectionDraftRef,
+    trackpadGestureLockRef: canvasState.trackpadGestureLockRef,
+    restoredViewportWorkspaceIdRef: canvasState.restoredViewportWorkspaceIdRef,
     reactFlow,
     viewport,
-    viewportRef,
+    viewportRef: canvasState.viewportRef,
     canvasInputModeSetting: agentSettings.canvasInputMode,
-    inputModalityStateRef,
-    setDetectedCanvasInputMode,
-    isShiftPressedRef,
-    setIsShiftPressed,
-    selectedNodeIdsRef,
+    inputModalityStateRef: canvasState.inputModalityStateRef,
+    setDetectedCanvasInputMode: canvasState.setDetectedCanvasInputMode,
+    isShiftPressedRef: canvasState.isShiftPressedRef,
+    setIsShiftPressed: canvasState.setIsShiftPressed,
+    selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
     requestNodeDeleteRef: actionRefs.requestNodeDeleteRef,
     focusNodeId,
     focusSequence,
@@ -297,11 +269,11 @@ export function WorkspaceCanvasInner({
   workspaceCanvasHooks.useWorkspaceCanvasPtyTaskCompletion({ setNodes, onRequestPersistFlush })
   const nodeTypes = workspaceCanvasHooks.useWorkspaceCanvasComposedNodeTypes({
     setNodes,
-    setSelectedNodeIds,
-    setSelectedSpaceIds,
-    selectedNodeIdsRef,
-    selectedSpaceIdsRef,
-    spacesRef,
+    setSelectedNodeIds: canvasState.setSelectedNodeIds,
+    setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
+    selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
+    selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
+    spacesRef: canvasState.spacesRef,
     workspacePath,
     agentSettings,
     actionRefs,
@@ -325,22 +297,22 @@ export function WorkspaceCanvasInner({
     focusNodeOnClick: agentSettings.focusNodeOnClick,
     focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
     defaultTerminalWindowScalePercent: agentSettings.defaultTerminalWindowScalePercent,
-    isShiftPressedRef,
-    selectionDraftRef,
-    setSelectionDraftUi,
+    isShiftPressedRef: canvasState.isShiftPressedRef,
+    selectionDraftRef: canvasState.selectionDraftRef,
+    setSelectionDraftUi: canvasState.setSelectionDraftUi,
     reactFlow,
     setNodes,
-    setSelectedNodeIds,
-    setSelectedSpaceIds,
-    setContextMenu,
-    setEmptySelectionPrompt,
+    setSelectedNodeIds: canvasState.setSelectedNodeIds,
+    setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
+    setContextMenu: canvasState.setContextMenu,
+    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     cancelSpaceRename,
-    selectedNodeIdsRef,
-    selectedSpaceIdsRef,
-    contextMenu,
+    selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
+    selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
+    contextMenu: canvasState.contextMenu,
     workspacePath,
     defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
-    spacesRef,
+    spacesRef: canvasState.spacesRef,
     onSpacesChange,
     nodesRef,
     createNodeForSession,
@@ -351,14 +323,14 @@ export function WorkspaceCanvasInner({
     isConvertSelectedNoteToTaskDisabled,
     convertSelectedNoteToTask,
   } = workspaceCanvasHooks.useWorkspaceCanvasNoteToTaskConversion({
-    selectedNodeIds,
-    selectedNodeIdsRef,
-    flowNodes,
+    selectedNodeIds: canvasState.selectedNodeIds,
+    selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
+    flowNodes: canvasState.flowNodes,
     nodesRef,
     setNodes,
     onRequestPersistFlush,
     onShowMessage,
-    setContextMenu,
+    setContextMenu: canvasState.setContextMenu,
   })
   const copyAgentLastMessage = workspaceCanvasHooks.useWorkspaceCanvasAgentLastMessageCopy({
     nodesRef,
@@ -386,9 +358,9 @@ export function WorkspaceCanvasInner({
     normalizePosition,
     applyPendingScrollbacks,
     isNodeDraggingRef,
-    spacesRef,
-    selectedSpaceIdsRef,
-    dragSelectedSpaceIdsRef,
+    spacesRef: canvasState.spacesRef,
+    selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
+    dragSelectedSpaceIdsRef: canvasState.dragSelectedSpaceIdsRef,
     exclusiveNodeDragAnchorIdRef,
     onSpacesChange,
     onRequestPersistFlush,
@@ -402,15 +374,15 @@ export function WorkspaceCanvasInner({
     spaceUi,
   } = workspaceCanvasHooks.useWorkspaceCanvasViewModel({
     agentSettings,
-    viewportRef,
+    viewportRef: canvasState.viewportRef,
     onViewportChange,
-    flowNodes,
-    contextMenu,
-    setContextMenu,
-    setEmptySelectionPrompt,
+    flowNodes: canvasState.flowNodes,
+    contextMenu: canvasState.contextMenu,
+    setContextMenu: canvasState.setContextMenu,
+    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     cancelSpaceRename,
     workspacePath,
-    spacesRef,
+    spacesRef: canvasState.spacesRef,
     handlePaneClick,
     handlePaneContextMenu,
     handleNodeContextMenu,
@@ -418,7 +390,7 @@ export function WorkspaceCanvasInner({
   })
   return (
     <WorkspaceCanvasView
-      canvasRef={canvasRef}
+      canvasRef={canvasState.canvasRef}
       resolvedCanvasInputMode={resolvedCanvasInputMode}
       onCanvasClick={spaceUi.handleCanvasClick}
       handleCanvasPointerDownCapture={handleCanvasPointerDownCapture}
@@ -426,7 +398,7 @@ export function WorkspaceCanvasInner({
       handleCanvasPointerUpCapture={handleCanvasPointerUpCapture}
       handleCanvasDoubleClickCapture={handleCanvasDoubleClickCapture}
       handleCanvasWheelCapture={handleCanvasWheelCapture}
-      nodes={flowNodes}
+      nodes={canvasState.flowNodes}
       edges={taskAgentEdges}
       nodeTypes={nodeTypes}
       onNodesChange={applyChanges}
@@ -444,11 +416,11 @@ export function WorkspaceCanvasInner({
       viewport={viewport}
       isTrackpadCanvasMode={isTrackpadCanvasMode}
       useManualCanvasWheelGestures={useManualCanvasWheelGestures}
-      isShiftPressed={isShiftPressed}
-      selectionDraft={selectionDraftUi}
+      isShiftPressed={canvasState.isShiftPressed}
+      selectionDraft={canvasState.selectionDraftUi}
       spaceVisuals={spaceVisuals}
       spaceFramePreview={spaceFramePreview}
-      selectedSpaceIds={selectedSpaceIds}
+      selectedSpaceIds={canvasState.selectedSpaceIds}
       handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
       editingSpaceId={editingSpaceId}
       spaceRenameInputRef={spaceRenameInputRef}
@@ -458,15 +430,15 @@ export function WorkspaceCanvasInner({
       cancelSpaceRename={cancelSpaceRename}
       startSpaceRename={startSpaceRename}
       setSpaceLabelColor={setSpaceLabelColor}
-      selectedNodeCount={selectedNodeIds.length}
-      isMinimapVisible={isMinimapVisible}
+      selectedNodeCount={canvasState.selectedNodeIds.length}
+      isMinimapVisible={canvasState.isMinimapVisible}
       minimapNodeColor={minimapNodeColor}
-      setIsMinimapVisible={setIsMinimapVisible}
+      setIsMinimapVisible={canvasState.setIsMinimapVisible}
       onMinimapVisibilityChange={onMinimapVisibilityChange}
       spaces={spaces}
       focusSpaceInViewport={focusSpaceInViewport}
       focusAllInViewport={focusAllInViewport}
-      contextMenu={contextMenu}
+      contextMenu={canvasState.contextMenu}
       closeContextMenu={spaceUi.closeContextMenu}
       createTerminalNode={createTerminalNode}
       createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
@@ -479,7 +451,7 @@ export function WorkspaceCanvasInner({
       isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}
       convertSelectedNoteToTask={convertSelectedNoteToTask}
       setSelectedNodeLabelColorOverride={labelColorOverride =>
-        setNodeLabelColorOverride(selectedNodeIdsRef.current, labelColorOverride)
+        setNodeLabelColorOverride(canvasState.selectedNodeIdsRef.current, labelColorOverride)
       }
       taskCreator={taskCreator}
       taskTitleProviderLabel={taskTitleProviderLabel}
