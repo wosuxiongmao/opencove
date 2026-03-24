@@ -107,7 +107,7 @@ export function useWorkspaceCanvasNodeCreation({
           height: defaultSize.height,
           kind,
           status: kind === 'agent' ? resolveInitialAgentRuntimeStatus(agent?.prompt) : null,
-          startedAt: kind === 'agent' ? now : null,
+          startedAt: now,
           endedAt: null,
           exitCode: null,
           lastError: null,
@@ -205,6 +205,8 @@ export function useWorkspaceCanvasNodeCreation({
         return null
       }
 
+      const now = new Date().toISOString()
+
       const nextNode: Node<TerminalNodeData> = {
         id: crypto.randomUUID(),
         type: 'noteNode',
@@ -217,7 +219,7 @@ export function useWorkspaceCanvasNodeCreation({
           height: noteSize.height,
           kind: 'note',
           status: null,
-          startedAt: null,
+          startedAt: now,
           endedAt: null,
           exitCode: null,
           lastError: null,

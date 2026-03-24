@@ -87,6 +87,7 @@ test.describe('Workspace Canvas - Arrange Semantics', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
       const canonicalSizes = await resolveCanonicalNodeSizes(window)
+      const agentStride = canonicalSizes.agent.width + CANONICAL_GUTTER_PX
 
       await openPaneContextMenuAtFlowPoint(window, pane, { x: 900, y: 720 })
       await expect(window.locator('.workspace-context-menu')).toBeVisible()
@@ -118,8 +119,8 @@ test.describe('Workspace Canvas - Arrange Semantics', () => {
             agent.x === task.x + task.width + CANONICAL_GUTTER_PX &&
             agent.y === task.y &&
             note.y === task.y &&
-            task.y < terminal.y &&
-            terminal.x === note.x
+            terminal.y === task.y &&
+            terminal.x === agent.x + agentStride
           )
         })
         .toBe(true)
@@ -142,8 +143,8 @@ test.describe('Workspace Canvas - Arrange Semantics', () => {
       expect(note.y).toBe(task.y)
       expect(agent.x).toBe(task.x + task.width + CANONICAL_GUTTER_PX)
       expect(agent.y).toBe(task.y)
-      expect(terminal.x).toBe(note.x)
-      expect(terminal.y).toBeGreaterThan(task.y)
+      expect(terminal.x).toBe(agent.x + agentStride)
+      expect(terminal.y).toBe(task.y)
       expect(rectsOverlap(task, agent)).toBe(false)
       expect(rectsOverlap(task, note)).toBe(false)
       expect(rectsOverlap(task, terminal)).toBe(false)
@@ -152,7 +153,10 @@ test.describe('Workspace Canvas - Arrange Semantics', () => {
       expect(rectsOverlap(note, terminal)).toBe(false)
 
       await ensureArtifactsDir()
-      await clickPaneAtFlowPoint(window, pane, { x: 20, y: 20 })
+      await clickPaneAtFlowPoint(window, pane, {
+        x: Math.max(0, note.x - 48),
+        y: note.y + note.height + 48,
+      })
       await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
       await window.screenshot({
         path: 'artifacts/workspace-canvas-arrange.semantic-task-agent-pair.png',
