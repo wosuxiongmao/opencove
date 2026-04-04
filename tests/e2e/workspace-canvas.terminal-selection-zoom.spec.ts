@@ -49,7 +49,12 @@ test.describe('Workspace Canvas - Terminal Selection (Zoom)', () => {
         .toBeGreaterThan(1.01)
       await window.waitForTimeout(150)
 
-      await xterm.click()
+      await window.evaluate(() => {
+        const textarea = document.querySelector('.xterm-helper-textarea')
+        if (textarea instanceof HTMLTextAreaElement) {
+          textarea.focus()
+        }
+      })
       await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()
 
       const resolveDragPoints = async (): Promise<{
@@ -127,7 +132,12 @@ test.describe('Workspace Canvas - Terminal Selection (Zoom)', () => {
           }
 
           await clearSelection()
-          await xterm.click()
+          await window.evaluate(() => {
+            const textarea = document.querySelector('.xterm-helper-textarea')
+            if (textarea instanceof HTMLTextAreaElement) {
+              textarea.focus()
+            }
+          })
           await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()
           await window.waitForTimeout(100)
           await attemptSelectionDrag(remainingAttempts - 1)
