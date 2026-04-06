@@ -61,6 +61,7 @@ export function toPersistedState(
         kind: node.data.kind,
         profileId: normalizeOptionalString(node.data.profileId),
         runtimeKind: node.data.runtimeKind,
+        terminalProviderHint: node.data.terminalProviderHint ?? null,
         labelColorOverride: normalizeNodeLabelColorOverride(node.data.labelColorOverride),
         status: node.data.status,
         startedAt: node.data.startedAt,
