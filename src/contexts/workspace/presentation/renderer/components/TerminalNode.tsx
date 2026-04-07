@@ -11,7 +11,13 @@ import {
   createTerminalCommandInputState,
   parseTerminalCommandInput,
 } from './terminalNode/commandInput'
-import { createPtyWriteQueue, handleTerminalCustomKeyEvent } from './terminalNode/inputBridge'
+import {
+  createWindowsAutomationPasteGuard,
+  createPtyWriteQueue,
+  handleTerminalCustomKeyEvent,
+  type TerminalShortcutDecision,
+  type WindowsAutomationPasteGuard,
+} from './terminalNode/inputBridge'
 import { registerTerminalLayoutSync } from './terminalNode/layoutSync'
 import {
   clearCachedTerminalScreenStateInvalidation,
@@ -41,6 +47,7 @@ import { DEFAULT_TERMINAL_FONT_FAMILY, MAX_SCROLLBACK_CHARS } from './terminalNo
 import { resolveInitialTerminalDimensions } from './terminalNode/initialDimensions'
 import { createTerminalOutputScheduler } from './terminalNode/outputScheduler'
 import { hydrateTerminalFromSnapshot } from './terminalNode/hydrateFromSnapshot'
+import { applyWebglPixelSnapping } from './terminalNode/webglPixelSnapping'
 import {
   selectDragSurfaceSelectionMode,
   selectViewportInteractionActive,
@@ -79,10 +86,13 @@ export function TerminalNode({
   const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
   const isViewportInteractionActive = useStore(selectViewportInteractionActive)
   const isTestEnvironment = window.opencoveApi.meta.isTest
+  const diagnosticsEnabled = window.opencoveApi.meta?.enableTerminalDiagnostics === true
   const outputSchedulerRef = useRef<ReturnType<typeof createTerminalOutputScheduler> | null>(null)
   const isViewportInteractionActiveRef = useRef(isViewportInteractionActive)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
+  const activeRendererKindRef = useRef<'webgl' | 'dom'>('dom')
+  const pixelSnapFrameRef = useRef<number | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const isPointerResizingRef = useRef(false)
   const lastSyncedPtySizeRef = useRef<{ cols: number; rows: number } | null>(null)
@@ -132,6 +142,24 @@ export function TerminalNode({
     isTerminalHydratedRef.current = false
     setIsTerminalHydrated(false)
   }, [sessionId])
+  const scheduleWebglPixelSnapping = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    if (pixelSnapFrameRef.current !== null) {
+      return
+    }
+
+    pixelSnapFrameRef.current = window.requestAnimationFrame(() => {
+      pixelSnapFrameRef.current = null
+      applyWebglPixelSnapping({
+        container: containerRef.current,
+        rendererKind: activeRendererKindRef.current,
+      })
+    })
+  }, [])
+
   const syncTerminalSize = useCallback(() => {
     syncTerminalNodeSize({
       terminalRef,
@@ -142,14 +170,15 @@ export function TerminalNode({
       sessionId,
       shouldResizePty: !suppressPtyResizeRef.current,
     })
-  }, [sessionId])
+    scheduleWebglPixelSnapping()
+  }, [scheduleWebglPixelSnapping, sessionId])
   const applyTerminalTheme = useTerminalThemeApplier({
     terminalRef,
     containerRef,
     terminalThemeMode,
   })
   const { transcriptRef, scheduleTranscriptSync } = useTerminalTestTranscriptMirror({
-    enabled: isTestEnvironment,
+    enabled: isTestEnvironment || diagnosticsEnabled,
     resetKey: sessionId,
     terminalRef,
   })
@@ -180,7 +209,6 @@ export function TerminalNode({
     const initialTerminalTheme = resolveTerminalTheme(terminalThemeMode)
     const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
     const windowsPty = window.opencoveApi.meta?.windowsPty ?? null
-    const diagnosticsEnabled = window.opencoveApi.meta?.enableTerminalDiagnostics === true
     const logTerminalDiagnostics =
       window.opencoveApi.debug?.logTerminalDiagnostics ?? (() => undefined)
     const terminal = new Terminal({
@@ -198,6 +226,7 @@ export function TerminalNode({
     terminal.loadAddon(fitAddon)
     terminal.loadAddon(serializeAddon)
     let activeRenderer = activatePreferredTerminalRenderer(terminal, terminalProvider)
+    activeRendererKindRef.current = activeRenderer.kind
     terminalRef.current = terminal
     fitAddonRef.current = fitAddon
     const disposeTerminalFind =
@@ -209,6 +238,7 @@ export function TerminalNode({
           })()
         : () => undefined
     let disposeTerminalSelectionTestHandle: () => void = () => undefined
+    let logTerminalShortcutDecision = (_decision: TerminalShortcutDecision): void => undefined
     const ptyWriteQueue = createPtyWriteQueue(({ data, encoding }) =>
       window.opencoveApi.pty.write({
         sessionId,
@@ -216,9 +246,17 @@ export function TerminalNode({
         ...(encoding === 'binary' ? { encoding } : {}),
       }),
     )
+    const windowsAutomationPasteGuardEnabled =
+      window.opencoveApi.meta?.enableWindowsAutomationPasteGuard === true
+    const windowsAutomationPasteGuard: WindowsAutomationPasteGuard | null =
+      windowsAutomationPasteGuardEnabled
+        ? createWindowsAutomationPasteGuard({ ptyWriteQueue })
+        : null
     terminal.attachCustomKeyEventHandler(event =>
       handleTerminalCustomKeyEvent({
+        automationPasteGuard: windowsAutomationPasteGuard,
         event,
+        logShortcutDecision: logTerminalShortcutDecision,
         ptyWriteQueue,
         terminal,
         onOpenFind: openTerminalFind,
@@ -226,6 +264,7 @@ export function TerminalNode({
     )
     let cancelMouseServicePatch: () => void = () => undefined
     let disposeTerminalHitTargetCursorScope: () => void = () => undefined
+    let disposePositionObserver: () => void = () => undefined
     if (containerRef.current) {
       terminal.open(containerRef.current)
       containerRef.current.setAttribute('data-cove-terminal-theme', resolvedTerminalUiTheme)
@@ -234,6 +273,36 @@ export function TerminalNode({
         container: containerRef.current,
         ownerId: `${nodeId}:${sessionId}`,
       })
+      const reactFlowViewport =
+        containerRef.current.closest('.react-flow__viewport') instanceof HTMLElement
+          ? (containerRef.current.closest('.react-flow__viewport') as HTMLElement)
+          : null
+      const reactFlowNode =
+        containerRef.current.closest('.react-flow__node') instanceof HTMLElement
+          ? (containerRef.current.closest('.react-flow__node') as HTMLElement)
+          : null
+      if (typeof MutationObserver !== 'undefined' && (reactFlowViewport || reactFlowNode)) {
+        const observer = new MutationObserver(() => {
+          if (activeRendererKindRef.current !== 'webgl') {
+            return
+          }
+
+          scheduleWebglPixelSnapping()
+        })
+        if (reactFlowViewport) {
+          observer.observe(reactFlowViewport, {
+            attributes: true,
+            attributeFilter: ['style', 'class'],
+          })
+        }
+        if (reactFlowNode) {
+          observer.observe(reactFlowNode, {
+            attributes: true,
+            attributeFilter: ['style', 'class'],
+          })
+        }
+        disposePositionObserver = () => observer.disconnect()
+      }
       if (isTestEnvironment) {
         disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(nodeId, terminal)
       }
@@ -258,6 +327,9 @@ export function TerminalNode({
       terminalThemeMode,
       windowsPty,
     })
+    logTerminalShortcutDecision = decision => {
+      terminalDiagnostics.logKeyboardShortcut(decision)
+    }
     let isDisposed = false,
       shouldForwardTerminalData = false
     const dataDisposable = terminal.onData(data => {
@@ -405,10 +477,12 @@ export function TerminalNode({
       })
       cancelMouseServicePatch()
       disposeTerminalHitTargetCursorScope()
+      disposePositionObserver()
       activeRenderer.dispose()
       isDisposed = true
       disposeLayoutSync()
       terminalDiagnostics.dispose()
+      windowsAutomationPasteGuard?.dispose()
       window.removeEventListener('opencove-theme-changed', handleThemeChange)
       resizeObserver.disconnect()
       dataDisposable.dispose()
@@ -429,6 +503,11 @@ export function TerminalNode({
       terminal.dispose()
       terminalRef.current = null
       fitAddonRef.current = null
+      activeRendererKindRef.current = 'dom'
+      if (pixelSnapFrameRef.current !== null) {
+        window.cancelAnimationFrame(pixelSnapFrameRef.current)
+        pixelSnapFrameRef.current = null
+      }
     }
   }, [
     cancelScrollbackPublish,
@@ -436,10 +515,12 @@ export function TerminalNode({
     bindSearchAddonToFind,
     nodeId,
     disposeScrollbackPublish,
+    diagnosticsEnabled,
     markScrollbackDirty,
     openTerminalFind,
     scrollbackBufferRef,
     scheduleTranscriptSync,
+    scheduleWebglPixelSnapping,
     sessionId,
     syncTerminalSize,
     terminalThemeMode,
