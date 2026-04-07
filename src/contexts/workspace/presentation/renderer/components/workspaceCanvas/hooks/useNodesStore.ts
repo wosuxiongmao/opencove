@@ -325,9 +325,11 @@ export function useWorkspaceCanvasNodesStore({
 
             const nextTitle =
               node.data.titlePinnedByUser === true ? node.data.title : normalizedTitle
+            const nextTerminalProviderHint =
+              terminalProviderHint ?? (node.data.terminalProviderHint ?? null)
             if (
               node.data.title === nextTitle &&
-              (node.data.terminalProviderHint ?? null) === terminalProviderHint
+              (node.data.terminalProviderHint ?? null) === nextTerminalProviderHint
             ) {
               return node
             }
@@ -338,7 +340,7 @@ export function useWorkspaceCanvasNodesStore({
               data: {
                 ...node.data,
                 title: nextTitle,
-                terminalProviderHint,
+                terminalProviderHint: nextTerminalProviderHint,
               },
             }
           })
