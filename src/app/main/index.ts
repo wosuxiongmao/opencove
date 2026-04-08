@@ -118,6 +118,21 @@ function resolveDevRendererOrigin(): string | null {
   return parsed ? parsed.origin : null
 }
 
+function normalizeDevRendererUrl(rawUrl: string): string {
+  const parsed = parseUrl(rawUrl)
+  if (!parsed) {
+    return rawUrl
+  }
+
+  // On Windows, "localhost" may resolve to IPv4 while Vite binds to IPv6 (or vice versa),
+  // causing ERR_CONNECTION_REFUSED. Force IPv4 loopback for dev.
+  if (parsed.hostname === 'localhost') {
+    parsed.hostname = '127.0.0.1'
+  }
+
+  return parsed.toString()
+}
+
 function isPathWithinRoot(rootPath: string, targetPath: string): boolean {
   const relativePath = relative(rootPath, targetPath)
 
@@ -351,7 +366,7 @@ function createWindow(): void {
   // HMR for renderer based on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    mainWindow.loadURL(normalizeDevRendererUrl(process.env['ELECTRON_RENDERER_URL']))
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }

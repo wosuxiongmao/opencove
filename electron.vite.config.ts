@@ -95,6 +95,12 @@ export default defineConfig({
   },
   renderer: {
     root: 'src/app/renderer',
+    server: {
+      // Keep dev URLs stable on Windows and avoid localhost IPv4/IPv6 ambiguity.
+      host: '127.0.0.1',
+      port: 5173,
+      strictPort: true,
+    },
     build: {
       outDir: 'out/renderer',
       rollupOptions: {
