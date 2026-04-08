@@ -54,6 +54,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐞 Fixed
 - Windows terminal rendering: keep 125% DPI embedded terminals crisp and restore Codex color output for manually launched PowerShell sessions. (#146)
+- Settings: allow auto-focus to center within the visible canvas (accounts for the primary sidebar) and stabilize Windows dev localhost resolution. (#158)
 - Windows terminal input: reduce terminal interruptions when voice input tools accidentally send Ctrl+C. (#158)
 - OpenCode: Stabilized embedded terminal rendering and cursor hit-testing to eliminate shutter-like artifacts and cursor flicker in restored canvas sessions. (#144)
 - Crash recovery: recover from renderer and child-process failures with a localized error boundary and lifecycle logging to prevent silent white screens. (#137)
