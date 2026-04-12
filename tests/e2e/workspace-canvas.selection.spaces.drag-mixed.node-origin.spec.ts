@@ -176,9 +176,9 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         throw new Error('failed to read initial node-origin space rects')
       }
 
-      const outsideTitleBox = await readLocatorClientRect(outsideTitle)
-      const dragStartX = outsideTitleBox.x + outsideTitleBox.width * 0.5
-      const dragStartY = outsideTitleBox.y + outsideTitleBox.height * 0.5
+      const outsideHeaderBox = await readLocatorClientRect(outsideHeader)
+      const dragStartX = outsideHeaderBox.x + 40
+      const dragStartY = outsideHeaderBox.y + 20
       const paneBox = await readLocatorClientRect(pane)
       const dragMargin = 48
       const desiredDragDx = Math.min(360, Math.max(240, Math.round(paneBox.width * 0.3)))

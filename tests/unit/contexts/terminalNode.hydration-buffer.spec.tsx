@@ -83,6 +83,10 @@ vi.mock('@xterm/xterm', () => {
       }
     }
 
+    public onSelectionChange() {
+      return { dispose: () => undefined }
+    }
+
     public write(data: string, callback?: () => void): void {
       this.written.push(data)
       callback?.()

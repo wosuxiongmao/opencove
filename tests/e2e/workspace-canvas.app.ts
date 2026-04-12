@@ -15,6 +15,29 @@ const E2E_APP_FORCE_KILL_POLL_MS = 50
 const E2E_USER_DATA_DIR_CLEANUP_RETRY_DELAY_MS = 100
 const E2E_USER_DATA_DIR_CLEANUP_MAX_ATTEMPTS = 6
 
+function copyDefinedEnv(
+  source: Record<string, string | undefined> | NodeJS.ProcessEnv,
+): Record<string, string> {
+  const next: Record<string, string> = {}
+
+  for (const [key, value] of Object.entries(source)) {
+    if (typeof value === 'string') {
+      next[key] = value
+    }
+  }
+
+  return next
+}
+
+const INITIAL_E2E_PROCESS_ENV = (() => {
+  const env = copyDefinedEnv(process.env)
+  // When running Playwright from inside Electron/GUI environments, macOS can inherit a
+  // `__CFBundleIdentifier` override that breaks launching the Electron binary (SIGABRT in
+  // `_RegisterApplication`). Ensure the child Electron uses its own bundle id.
+  delete env['__CFBundleIdentifier']
+  return env
+})()
+
 function isTruthyEnv(rawValue: string | undefined): boolean {
   if (!rawValue) {
     return false
@@ -247,17 +270,13 @@ async function launchAppInMode(
   let electronApp: ElectronApplication | null = null
 
   try {
-    const baseEnv = { ...process.env }
-    // When running Playwright from inside Electron/GUI environments, macOS can inherit a
-    // `__CFBundleIdentifier` override that breaks launching the Electron binary (SIGABRT in
-    // `_RegisterApplication`). Ensure the child Electron uses its own bundle id.
-    delete baseEnv['__CFBundleIdentifier']
+    const envOverrides = copyDefinedEnv(options.env ?? {})
 
     electronApp = await electron.launch({
       timeout: E2E_APP_LAUNCH_TIMEOUT_MS,
       args: resolveElectronLaunchArgs(),
       env: {
-        ...baseEnv,
+        ...INITIAL_E2E_PROCESS_ENV,
         NODE_ENV: 'test',
         HOME: testHomeDir,
         USERPROFILE: testHomeDir,
@@ -269,7 +288,7 @@ async function launchAppInMode(
         OPENCOVE_TEST_AGENT_STUB_SCRIPT: testAgentStubScriptPath,
         OPENCOVE_E2E_WINDOW_MODE: launchMode,
         ...(shouldDisableElectronSandboxForLinuxCi() ? { ELECTRON_DISABLE_SANDBOX: '1' } : {}),
-        ...options.env,
+        ...envOverrides,
       },
     })
 
