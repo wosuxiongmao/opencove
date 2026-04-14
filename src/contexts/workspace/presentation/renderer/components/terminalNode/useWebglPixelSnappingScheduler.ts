@@ -13,19 +13,22 @@ export function useWebglPixelSnappingScheduler(input: {
 } {
   const { containerRef } = input
   const activeRendererKindRef = useRef<TerminalRendererKind>('dom')
-  const pixelSnapFrameRef = useRef<number | null>(null)
+  const pixelSnapFrame1Ref = useRef<number | null>(null)
+  const pixelSnapFrame2Ref = useRef<number | null>(null)
 
   const cancelWebglPixelSnapping = useCallback(() => {
     if (typeof window === 'undefined') {
       return
     }
 
-    if (pixelSnapFrameRef.current === null) {
-      return
+    if (pixelSnapFrame1Ref.current !== null) {
+      window.cancelAnimationFrame(pixelSnapFrame1Ref.current)
+      pixelSnapFrame1Ref.current = null
     }
-
-    window.cancelAnimationFrame(pixelSnapFrameRef.current)
-    pixelSnapFrameRef.current = null
+    if (pixelSnapFrame2Ref.current !== null) {
+      window.cancelAnimationFrame(pixelSnapFrame2Ref.current)
+      pixelSnapFrame2Ref.current = null
+    }
   }, [])
 
   const scheduleWebglPixelSnapping = useCallback(() => {
@@ -33,15 +36,19 @@ export function useWebglPixelSnappingScheduler(input: {
       return
     }
 
-    if (pixelSnapFrameRef.current !== null) {
+    if (pixelSnapFrame1Ref.current !== null || pixelSnapFrame2Ref.current !== null) {
       return
     }
 
-    pixelSnapFrameRef.current = window.requestAnimationFrame(() => {
-      pixelSnapFrameRef.current = null
-      applyWebglPixelSnapping({
-        container: containerRef.current,
-        rendererKind: activeRendererKindRef.current,
+    // Use double-rAF to ensure layout has settled before applying pixel snapping.
+    pixelSnapFrame1Ref.current = window.requestAnimationFrame(() => {
+      pixelSnapFrame2Ref.current = window.requestAnimationFrame(() => {
+        pixelSnapFrame1Ref.current = null
+        pixelSnapFrame2Ref.current = null
+        applyWebglPixelSnapping({
+          container: containerRef.current,
+          rendererKind: activeRendererKindRef.current,
+        })
       })
     })
   }, [containerRef])
