@@ -113,10 +113,10 @@ export function registerTerminalDiagnostics({
       : null
 
   const logInteractionEvent = (event: string, point?: { x: number; y: number } | null): void => {
-      diagnostics.log(event, captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
-        ...captureTerminalLayoutDiagnostics({ terminal, container }),
-        ...collectInteractionDetails(point),
-      })
+    diagnostics.log(event, captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
+      ...captureTerminalLayoutDiagnostics({ terminal, container }),
+      ...collectInteractionDetails(point),
+    })
   }
 
   const logInteractionEventWithDetails = (
@@ -124,11 +124,11 @@ export function registerTerminalDiagnostics({
     details: TerminalDiagnosticsLogInput['details'],
     point?: { x: number; y: number } | null,
   ): void => {
-      diagnostics.log(event, captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
-        ...captureTerminalLayoutDiagnostics({ terminal, container }),
-        ...collectInteractionDetails(point),
-        ...details,
-      })
+    diagnostics.log(event, captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
+      ...captureTerminalLayoutDiagnostics({ terminal, container }),
+      ...collectInteractionDetails(point),
+      ...details,
+    })
   }
 
   const mutationObserver =

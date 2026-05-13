@@ -414,24 +414,24 @@ export function prepareRuntimePresentationAttach(options: {
       }).then(snapshot => snapshot ?? (initialGeometry.changed === true ? null : baselineSnapshot))
     }
 
-          const baselineHasMeaningfulScreen =
-            baselineSnapshot !== null &&
-            containsMeaningfulTerminalDisplayContent(baselineSnapshot.serializedScreen)
-          const shouldRequireFreshMeaningfulScreen =
-            options.requirePostGeometrySnapshotOutput === true &&
-            (initialGeometry?.changed === true || !baselineHasMeaningfulScreen)
+    const baselineHasMeaningfulScreen =
+      baselineSnapshot !== null &&
+      containsMeaningfulTerminalDisplayContent(baselineSnapshot.serializedScreen)
+    const shouldRequireFreshMeaningfulScreen =
+      options.requirePostGeometrySnapshotOutput === true &&
+      (initialGeometry?.changed === true || !baselineHasMeaningfulScreen)
 
-          return requestPresentationSnapshotAfterGeometry({
-            sessionId: options.sessionId,
-            expectedGeometry: initialGeometry
-              ? { cols: initialGeometry.cols, rows: initialGeometry.rows }
-              : null,
-            minAppliedSeqExclusive: shouldRequireFreshMeaningfulScreen
-              ? (baselineSnapshot?.appliedSeq ?? 0)
-              : null,
-            requireMeaningfulSerializedScreen: shouldRequireFreshMeaningfulScreen,
-            maxAttempts: shouldRequireFreshMeaningfulScreen ? 80 : 8,
-          })
+    return requestPresentationSnapshotAfterGeometry({
+      sessionId: options.sessionId,
+      expectedGeometry: initialGeometry
+        ? { cols: initialGeometry.cols, rows: initialGeometry.rows }
+        : null,
+      minAppliedSeqExclusive: shouldRequireFreshMeaningfulScreen
+        ? (baselineSnapshot?.appliedSeq ?? 0)
+        : null,
+      requireMeaningfulSerializedScreen: shouldRequireFreshMeaningfulScreen,
+      maxAttempts: shouldRequireFreshMeaningfulScreen ? 80 : 8,
+    })
   })
 
   return { attachPromise, presentationSnapshotPromise }

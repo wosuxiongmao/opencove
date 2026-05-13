@@ -41,7 +41,9 @@ function summarizePath(path: string | null | undefined): string | null {
   return truncate(path, 320)
 }
 
-function summarizeEnv(env: NodeJS.ProcessEnv | undefined): Record<string, RuntimeDiagnosticsDetailValue> {
+function summarizeEnv(
+  env: NodeJS.ProcessEnv | undefined,
+): Record<string, RuntimeDiagnosticsDetailValue> {
   if (!env) {
     return {
       envProvided: false,
@@ -131,7 +133,9 @@ export function describeAgentLaunchCommand(input: {
   }
 }
 
-export function describeAgentLaunchError(error: unknown): Record<string, RuntimeDiagnosticsDetailValue> {
+export function describeAgentLaunchError(
+  error: unknown,
+): Record<string, RuntimeDiagnosticsDetailValue> {
   if (error instanceof Error) {
     return {
       errorName: error.name,

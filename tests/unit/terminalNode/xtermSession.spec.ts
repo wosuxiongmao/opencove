@@ -58,12 +58,9 @@ vi.mock('@xterm/xterm', () => ({
   }),
 }))
 
-vi.mock(
-  '../../../src/contexts/settings/presentation/renderer/terminalDisplayMeasurement',
-  () => ({
-    registerTerminalDisplayMeasurementHandle: vi.fn(() => () => undefined),
-  }),
-)
+vi.mock('../../../src/contexts/settings/presentation/renderer/terminalDisplayMeasurement', () => ({
+  registerTerminalDisplayMeasurementHandle: vi.fn(() => () => undefined),
+}))
 
 vi.mock(
   '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer',

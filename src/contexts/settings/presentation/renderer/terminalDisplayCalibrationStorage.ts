@@ -177,7 +177,13 @@ export function useTerminalClientDisplayCalibration({
       window.removeEventListener(CHANGE_EVENT, refresh)
       window.removeEventListener('storage', refresh)
     }
-  }, [profileKey, referenceSignature, terminalDisplayReference, terminalFontFamily, terminalFontSize])
+  }, [
+    profileKey,
+    referenceSignature,
+    terminalDisplayReference,
+    terminalFontFamily,
+    terminalFontSize,
+  ])
 
   return calibration
 }

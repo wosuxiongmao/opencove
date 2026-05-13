@@ -86,7 +86,9 @@ function normalizeProcessCommandEnvironment(env: NodeJS.ProcessEnv): {
   writeCanonicalWindowsPathEnvValue(nextEnv, normalizedPath)
   const diagnostics: string[] = []
   if (normalizedPath !== currentPath) {
-    diagnostics.push('Appended stable Windows command fallback directories to the current process PATH.')
+    diagnostics.push(
+      'Appended stable Windows command fallback directories to the current process PATH.',
+    )
   }
   if (needsCanonicalPathKey) {
     diagnostics.push('Canonicalized Windows process Path key to PATH.')
