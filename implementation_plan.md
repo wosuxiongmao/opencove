@@ -8,6 +8,7 @@
 
 ## 变更索引
 
+- [/] CHG-20260513-03 Fix typecheck errors after rebase — useAgentNodeLifecycle 缺少 terminalDisplayMetrics 参数 #change [tasks:: T-046]
 - [x] CHG-20260513-02 Fix createTerminalNodeAtFlowPosition display metrics passthrough — 透传 terminalDisplayMetrics 参数修复测试 #change [tasks:: T-045]
 - [x] CHG-20260513-01 Fix Resume Terminal Text Edge Overflow — 修正终端几何计算 padding 常量 + hydration 后调度 overhang 检查 + 修复 scheduler 重入问题 + 更新测试期望值 #change [tasks:: T-041~T-044]
 
@@ -15,7 +16,17 @@
 
 ## 活跃变更详情
 
-（无活跃变更）
+### CHG-20260513-03 Fix typecheck errors after rebase
+
+**背景（Why）**：Rebase 到最新 main 后，`useAgentNodeLifecycle.ts` 取上游版本（不含 `terminalDisplayMetrics`），但 `useCanvasAgentSupport.ts` 仍引用该属性，导致 typecheck 失败。
+
+**范围（What）**：
+- 1 个文件改动
+- `useAgentNodeLifecycle.ts` — 接口新增 `terminalDisplayMetrics` 参数 + import + 透传到 `launchAgentRuntime`
+
+**技术决策（How）**：
+- 在 `UseAgentNodeLifecycleParams` 接口中新增 `terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics`
+- 在 `launchAgentRuntime` 调用处透传该参数
 
 <!-- ARCHIVE -->
 

@@ -16,6 +16,7 @@ import {
 } from '../../../utils/agentResumeBinding'
 import { invalidateCachedTerminalScreenState } from '../../terminalNode/screenStateCache'
 import { toErrorMessage } from '../helpers'
+import type { TerminalPtyGeometryDisplayMetrics } from '@contexts/workspace/domain/terminalPtyGeometry'
 import { resolveSpaceMountLaunchContext } from './spaceMountLaunchContext'
 import {
   buildAgentNodeTitle as formatAgentNodeTitle,
@@ -44,6 +45,7 @@ interface UseAgentNodeLifecycleParams {
   agentFullAccess: boolean
   defaultTerminalProfileId: string | null
   terminalFontSize: number
+  terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
   agentEnvByProvider: AgentEnvByProvider
   agentExecutablePathOverrideByProvider?: AgentExecutablePathOverrideByProvider
   environmentVariables?: Record<string, string>
@@ -66,6 +68,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   agentExecutablePathOverrideByProvider,
   environmentVariables,
   onRequestPersistFlush,
+  terminalDisplayMetrics,
 }: UseAgentNodeLifecycleParams): {
   buildAgentNodeTitle: (provider: AgentNodeData['provider'], label: string | null) => string
   launchAgentInNode: (nodeId: string, mode: 'new' | 'resume') => Promise<void>
@@ -257,6 +260,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
           defaultTerminalProfileId,
           executablePathOverride,
           terminalFontSize,
+          terminalDisplayMetrics,
         })
 
         if (!isAgentLaunchTokenCurrent(nodeId, launchToken)) {

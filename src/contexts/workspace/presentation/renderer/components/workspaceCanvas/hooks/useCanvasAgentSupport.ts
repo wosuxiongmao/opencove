@@ -95,7 +95,6 @@ export function useWorkspaceCanvasAgentSupport({
     setContextMenu,
     createNodeForSession,
     standardWindowSizeBucket,
-    terminalDisplayMetrics,
     buildAgentNodeTitle,
   })
 

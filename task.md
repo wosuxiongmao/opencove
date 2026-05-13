@@ -10,6 +10,10 @@
 
 **状态说明**: `[ ]` 未开始 | `[/]` 进行中 | `[x]` 完成 | `[!]` 阻塞 | `[-]` 跳过
 
+### CHG-20260513-03: Fix typecheck errors after rebase
+<!-- APPROVED -->
+- [/] T-046 修复 useAgentNodeLifecycle 缺少 terminalDisplayMetrics 参数导致 typecheck 失败
+
 <!-- ARCHIVE -->
 
 ### CHG-20260513-02: Fix createTerminalNodeAtFlowPosition display metrics passthrough
