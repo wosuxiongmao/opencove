@@ -252,4 +252,83 @@ describe('createTerminalNodeAtFlowPosition', () => {
       nodeId: 'node-remote',
     })
   })
+
+  it('uses display calibration metrics for the spawned terminal geometry', async () => {
+    const ptySpawn = vi.fn(async () => ({
+      sessionId: 'session-calibrated',
+      profileId: null,
+      runtimeKind: 'posix' as const,
+    }))
+    const createNodeForSession = vi.fn(async () => ({ id: 'node-calibrated' }) as never)
+
+    vi.stubGlobal('window', {
+      opencoveApi: {
+        pty: {
+          spawn: ptySpawn,
+        },
+        persistence: {
+          readAppState: vi.fn(async () => ({
+            state: {
+              activeWorkspaceId: 'workspace-1',
+              workspaces: [
+                {
+                  id: 'workspace-1',
+                  path: '/workspace/root',
+                  activeSpaceId: null,
+                  spaces: [],
+                },
+              ],
+            },
+            recovery: null,
+          })),
+        },
+        controlSurface: {
+          invoke: vi.fn(),
+        },
+      },
+    })
+
+    await createTerminalNodeAtFlowPosition({
+      anchor: { x: 320, y: 180 },
+      workspaceId: 'workspace-1',
+      defaultTerminalProfileId: null,
+      standardWindowSizeBucket: 'regular',
+      terminalDisplayMetrics: {
+        fontSize: 15,
+        lineHeight: 1.1,
+        letterSpacing: 0.2,
+      },
+      workspacePath: '',
+      spacesRef: { current: [] },
+      nodesRef: { current: [] },
+      setNodes: vi.fn(),
+      onSpacesChange: vi.fn(),
+      createNodeForSession,
+    })
+
+    const baseGeometry = regularTerminalLaunchGeometry()
+    const calibratedGeometry = resolveTerminalPtyGeometryForNodeFrame({
+      ...resolveDefaultTerminalWindowSize('regular'),
+      terminalFontSize: DEFAULT_AGENT_SETTINGS.terminalFontSize,
+      displayMetrics: {
+        fontSize: 15,
+        lineHeight: 1.1,
+        letterSpacing: 0.2,
+      },
+    })
+
+    expect(calibratedGeometry.cols).toBeLessThan(baseGeometry.cols)
+    expect(calibratedGeometry.rows).toBeLessThan(baseGeometry.rows)
+    expect(ptySpawn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cols: calibratedGeometry.cols,
+        rows: calibratedGeometry.rows,
+      }),
+    )
+    expect(createNodeForSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        terminalGeometry: calibratedGeometry,
+      }),
+    )
+  })
 })

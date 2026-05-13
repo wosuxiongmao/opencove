@@ -5,6 +5,11 @@ import type { ControlSurfaceRemoteEndpointResolver } from '../controlSurface/rem
 import { createAppError, OpenCoveAppError } from '../../../shared/errors/appError'
 import { invokeControlSurface } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../controlSurface/remote/resolveControlSurfaceConnectionInfo'
+import {
+  describeAgentLaunchError,
+  logAgentLaunchError,
+  logAgentLaunchInfo,
+} from '../diagnostics/agentLaunchRuntimeDiagnostics'
 import { registerHandledIpc } from './handle'
 import type { IpcRegistrationDisposable } from './types'
 
@@ -54,6 +59,15 @@ export function registerControlSurfaceIpcHandlers(
     async (_event, payload: unknown): Promise<unknown> => {
       const request = normalizeInvokeRequestPayload(payload)
 
+      logAgentLaunchInfo(
+        'control-surface-ipc-received',
+        'Main IPC received a control surface invoke request.',
+        {
+          kind: request.kind,
+          requestId: request.id,
+        },
+      )
+
       const connection =
         (endpointResolver ? await endpointResolver() : null) ??
         (await resolveControlSurfaceConnectionInfoFromUserData({
@@ -61,8 +75,27 @@ export function registerControlSurfaceIpcHandlers(
         }))
 
       if (!connection) {
+        logAgentLaunchError(
+          'control-surface-ipc-no-endpoint',
+          'No control surface endpoint was available for invoke.',
+          {
+            kind: request.kind,
+            requestId: request.id,
+          },
+        )
         throw createAppError('worker.unavailable', { debugMessage: 'Home worker is unavailable.' })
       }
+
+      logAgentLaunchInfo(
+        'control-surface-ipc-endpoint-resolved',
+        'Main IPC resolved a control surface endpoint.',
+        {
+          kind: request.kind,
+          requestId: request.id,
+          hostname: connection.hostname,
+          port: connection.port,
+        },
+      )
 
       try {
         const { httpStatus, result } = await invokeControlSurface(
@@ -74,6 +107,18 @@ export function registerControlSurfaceIpcHandlers(
           request,
         )
 
+        logAgentLaunchInfo(
+          'control-surface-ipc-http-result',
+          'Control surface invoke returned an HTTP response.',
+          {
+            kind: request.kind,
+            requestId: request.id,
+            httpStatus,
+            resultPresent: result !== null,
+            resultOk: result?.ok ?? null,
+          },
+        )
+
         if (httpStatus !== 200 || !result) {
           throw createAppError('worker.unavailable', {
             debugMessage: `Control surface invoke failed (HTTP ${httpStatus}).`,
@@ -81,11 +126,30 @@ export function registerControlSurfaceIpcHandlers(
         }
 
         if (result.ok === false) {
+          logAgentLaunchError(
+            'control-surface-ipc-result-error',
+            'Control surface invoke returned an application error.',
+            {
+              kind: request.kind,
+              requestId: request.id,
+              errorCode: result.error.code,
+              errorDebugMessage: result.error.debugMessage ?? null,
+            },
+          )
           throw createAppError(result.error)
         }
 
         return result.value
       } catch (error) {
+        logAgentLaunchError(
+          'control-surface-ipc-invoke-error',
+          'Control surface invoke failed before returning a value.',
+          {
+            kind: request.kind,
+            requestId: request.id,
+            ...describeAgentLaunchError(error),
+          },
+        )
         if (error instanceof OpenCoveAppError) {
           throw error
         }

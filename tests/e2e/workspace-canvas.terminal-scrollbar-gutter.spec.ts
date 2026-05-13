@@ -1,8 +1,10 @@
 import { expect, test, type Locator } from '@playwright/test'
 import {
   buildEchoSequenceCommand,
+  buildNodeEvalCommand,
   clearAndSeedWorkspace,
   launchApp,
+  readCanvasViewport,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
 
@@ -18,13 +20,13 @@ test.describe('Workspace Canvas - Terminal scrollbar gutter', () => {
             id: 'node-a',
             title: 'terminal-a',
             position: { x: 180, y: 140 },
-            width: 520,
+            width: 816,
             height: 320,
           },
           {
             id: 'node-b',
             title: 'codex · gpt-5.2-codex',
-            position: { x: 760, y: 140 },
+            position: { x: 180, y: 520 },
             width: 520,
             height: 320,
             kind: 'agent',
@@ -98,6 +100,54 @@ test.describe('Workspace Canvas - Terminal scrollbar gutter', () => {
           .poll(
             async () =>
               await window.evaluate(id => {
+                const nodeElement = document.querySelector(
+                  `.react-flow__node[data-id="${id}"] .terminal-node`,
+                )
+                const sliderElement = nodeElement?.querySelector(
+                  '.xterm-scrollable-element .scrollbar.vertical .slider',
+                )
+                const scrollbarElement = nodeElement?.querySelector(
+                  '.xterm-scrollable-element .scrollbar.vertical',
+                )
+                if (
+                  !(nodeElement instanceof HTMLElement) ||
+                  !(sliderElement instanceof HTMLElement) ||
+                  !(scrollbarElement instanceof HTMLElement)
+                ) {
+                  return null
+                }
+
+                const sliderRect = sliderElement.getBoundingClientRect()
+                const point = {
+                  x: sliderRect.left + sliderRect.width / 2,
+                  y: sliderRect.top + sliderRect.height / 2,
+                }
+                const hitTarget = document.elementFromPoint(point.x, point.y)
+                const resizer = hitTarget?.closest('.terminal-node__resizer')
+                const hitScrollbarElement = hitTarget?.closest(
+                  '.xterm-scrollable-element .scrollbar.vertical',
+                )
+
+                return {
+                  hitScrollbar: hitScrollbarElement === scrollbarElement,
+                  hitResizer: resizer !== null,
+                  hitClass:
+                    hitTarget instanceof HTMLElement
+                      ? hitTarget.className
+                      : (hitTarget?.nodeName ?? null),
+                }
+              }, nodeId),
+            { timeout: 5_000 },
+          )
+          .toMatchObject({
+            hitScrollbar: true,
+            hitResizer: false,
+          })
+
+        await expect
+          .poll(
+            async () =>
+              await window.evaluate(id => {
                 const api = window.__opencoveTerminalSelectionTestApi
                 if (!api) {
                   return { ok: false as const, reason: 'missing test api' }
@@ -106,6 +156,10 @@ test.describe('Workspace Canvas - Terminal scrollbar gutter', () => {
                 const size = api.getSize(id)
                 if (!size) {
                   return { ok: false as const, reason: 'missing terminal size' }
+                }
+                const renderMetrics = api.getRenderMetrics(id)
+                if (!renderMetrics?.cssCellWidth) {
+                  return { ok: false as const, reason: 'missing render metrics' }
                 }
 
                 // Electron/Linux CI can land the lower-right interior cell center directly on the
@@ -127,8 +181,10 @@ test.describe('Workspace Canvas - Terminal scrollbar gutter', () => {
                 }
 
                 const terminalSurface = nodeElement.querySelector('.terminal-node__terminal')
+                const xtermElement = nodeElement.querySelector('.xterm')
                 const viewportElement = nodeElement.querySelector('.xterm-viewport')
                 const screenElement = nodeElement.querySelector('.xterm-screen')
+                const rowElement = nodeElement.querySelector('.xterm-rows > div')
                 const scrollbarElement = nodeElement.querySelector(
                   '.xterm-scrollable-element .scrollbar.vertical',
                 )
@@ -138,12 +194,20 @@ test.describe('Workspace Canvas - Terminal scrollbar gutter', () => {
                   return { ok: false as const, reason: 'missing terminal surface' }
                 }
 
+                if (!(xtermElement instanceof HTMLElement)) {
+                  return { ok: false as const, reason: 'missing xterm' }
+                }
+
                 if (!(viewportElement instanceof HTMLElement)) {
                   return { ok: false as const, reason: 'missing viewport' }
                 }
 
                 if (!(screenElement instanceof HTMLElement)) {
                   return { ok: false as const, reason: 'missing screen' }
+                }
+
+                if (!(rowElement instanceof HTMLElement)) {
+                  return { ok: false as const, reason: 'missing row' }
                 }
 
                 const pointInsideRect = (
@@ -163,10 +227,17 @@ test.describe('Workspace Canvas - Terminal scrollbar gutter', () => {
                 if (!hitTarget) {
                   return { ok: false as const, reason: 'missing hit target' }
                 }
+                const xtermStyle = window.getComputedStyle(xtermElement)
+                const screenStyle = window.getComputedStyle(screenElement)
+                const rowStyle = window.getComputedStyle(rowElement)
+                const horizontalPadding =
+                  (Number.parseFloat(xtermStyle.paddingLeft) || 0) +
+                  (Number.parseFloat(xtermStyle.paddingRight) || 0)
 
                 return {
                   ok: true as const,
                   size,
+                  cssCellWidth: renderMetrics.cssCellWidth,
                   targetCol,
                   targetRow,
                   point: center,
@@ -177,6 +248,18 @@ test.describe('Workspace Canvas - Terminal scrollbar gutter', () => {
                     center,
                     0.5,
                   ),
+                  terminalRightGutterPx:
+                    terminalSurface.getBoundingClientRect().right -
+                    screenElement.getBoundingClientRect().right,
+                  screenOverflowX: screenStyle.overflowX,
+                  screenOverflowY: screenStyle.overflowY,
+                  rowOverflowX: rowStyle.overflowX,
+                  rowOverflowY: rowStyle.overflowY,
+                  xtermLayoutGutterPx:
+                    Math.round(
+                      (xtermElement.clientWidth - horizontalPadding - screenElement.clientWidth) *
+                        100,
+                    ) / 100,
                   insideViewportBounds: pointInsideRect(
                     viewportElement.getBoundingClientRect(),
                     center,
@@ -211,6 +294,400 @@ test.describe('Workspace Canvas - Terminal scrollbar gutter', () => {
             insideScreenBounds: true,
             insideScrollbarBounds: false,
             insideResizerBounds: false,
+            screenOverflowX: 'visible',
+            screenOverflowY: 'visible',
+            rowOverflowX: 'visible',
+            rowOverflowY: 'visible',
+          })
+        await expect
+          .poll(
+            async () =>
+              await window.evaluate(id => {
+                const api = window.__opencoveTerminalSelectionTestApi
+                const nodeElement = document.querySelector(
+                  `.react-flow__node[data-id="${id}"] .terminal-node`,
+                )
+                const terminalSurface = nodeElement?.querySelector('.terminal-node__terminal')
+                const xtermElement = nodeElement?.querySelector('.xterm')
+                const screenElement = nodeElement?.querySelector('.xterm-screen')
+                const overviewRulerElement = nodeElement?.querySelector(
+                  '.xterm-decoration-overview-ruler',
+                )
+                const renderMetrics = api?.getRenderMetrics(id)
+                if (
+                  !(terminalSurface instanceof HTMLElement) ||
+                  !(xtermElement instanceof HTMLElement) ||
+                  !(screenElement instanceof HTMLElement) ||
+                  !(overviewRulerElement instanceof HTMLElement)
+                ) {
+                  return null
+                }
+                const cssCellWidth = renderMetrics?.cssCellWidth
+                if (typeof cssCellWidth !== 'number' || !Number.isFinite(cssCellWidth)) {
+                  return null
+                }
+                const xtermStyle = window.getComputedStyle(xtermElement)
+                const horizontalPadding =
+                  (Number.parseFloat(xtermStyle.paddingLeft) || 0) +
+                  (Number.parseFloat(xtermStyle.paddingRight) || 0)
+                const xtermLayoutGutterPx =
+                  Math.round(
+                    (xtermElement.clientWidth - horizontalPadding - screenElement.clientWidth) *
+                      100,
+                  ) / 100
+
+                return {
+                  cssCellWidth,
+                  terminalRightGutterPx:
+                    Math.round(
+                      (terminalSurface.getBoundingClientRect().right -
+                        screenElement.getBoundingClientRect().right) *
+                        100,
+                    ) / 100,
+                  xtermLayoutGutterPx,
+                  overviewRulerWidth:
+                    Math.round(overviewRulerElement.getBoundingClientRect().width * 100) / 100,
+                }
+              }, nodeId),
+          )
+          .toMatchObject({
+            terminalRightGutterPx: expect.any(Number),
+            xtermLayoutGutterPx: expect.any(Number),
+          })
+        await expect
+          .poll(
+            async () =>
+              await window.evaluate(id => {
+                const nodeElement = document.querySelector(
+                  `.react-flow__node[data-id="${id}"] .terminal-node`,
+                )
+                const overviewRulerElement = nodeElement?.querySelector(
+                  '.xterm-decoration-overview-ruler',
+                )
+                if (!(overviewRulerElement instanceof HTMLElement)) {
+                  return null
+                }
+
+                return Math.round(overviewRulerElement.getBoundingClientRect().width * 100) / 100
+              }, nodeId),
+          )
+          .toBeLessThan(0.5)
+        await expect
+          .poll(
+            async () =>
+              await window.evaluate(id => {
+                const api = window.__opencoveTerminalSelectionTestApi
+                const nodeElement = document.querySelector(
+                  `.react-flow__node[data-id="${id}"] .terminal-node`,
+                )
+                const xtermElement = nodeElement?.querySelector('.xterm')
+                const screenElement = nodeElement?.querySelector('.xterm-screen')
+                const scrollbarElement = nodeElement?.querySelector(
+                  '.xterm-scrollable-element .scrollbar.vertical',
+                )
+                const renderMetrics = api?.getRenderMetrics(id)
+                if (
+                  !(xtermElement instanceof HTMLElement) ||
+                  !(screenElement instanceof HTMLElement) ||
+                  !(scrollbarElement instanceof HTMLElement) ||
+                  !renderMetrics?.cssCellWidth
+                ) {
+                  return null
+                }
+                const xtermStyle = window.getComputedStyle(xtermElement)
+                const horizontalPadding =
+                  (Number.parseFloat(xtermStyle.paddingLeft) || 0) +
+                  (Number.parseFloat(xtermStyle.paddingRight) || 0)
+
+                const gutter =
+                  Math.round(
+                    (xtermElement.clientWidth - horizontalPadding - screenElement.clientWidth) *
+                      100,
+                  ) / 100
+                const cssCellWidth = renderMetrics.cssCellWidth
+                const screenToScrollbarGapPx =
+                  Math.round(
+                    (scrollbarElement.getBoundingClientRect().left -
+                      screenElement.getBoundingClientRect().right) *
+                      100,
+                  ) / 100
+
+                return { gutterPx: gutter, cssCellWidth, screenToScrollbarGapPx }
+              }, nodeId),
+          )
+          .toMatchObject({
+            gutterPx: expect.any(Number),
+            cssCellWidth: expect.any(Number),
+            screenToScrollbarGapPx: expect.any(Number),
+          })
+        await expect
+          .poll(
+            async () =>
+              await window.evaluate(id => {
+                const api = window.__opencoveTerminalSelectionTestApi
+                const nodeElement = document.querySelector(
+                  `.react-flow__node[data-id="${id}"] .terminal-node`,
+                )
+                const xtermElement = nodeElement?.querySelector('.xterm')
+                const screenElement = nodeElement?.querySelector('.xterm-screen')
+                const scrollbarElement = nodeElement?.querySelector(
+                  '.xterm-scrollable-element .scrollbar.vertical',
+                )
+                const renderMetrics = api?.getRenderMetrics(id)
+                if (
+                  !(xtermElement instanceof HTMLElement) ||
+                  !(screenElement instanceof HTMLElement) ||
+                  !(scrollbarElement instanceof HTMLElement) ||
+                  !renderMetrics?.cssCellWidth
+                ) {
+                  return null
+                }
+                const xtermStyle = window.getComputedStyle(xtermElement)
+                const horizontalPadding =
+                  (Number.parseFloat(xtermStyle.paddingLeft) || 0) +
+                  (Number.parseFloat(xtermStyle.paddingRight) || 0)
+                const gutter =
+                  Math.round(
+                    (xtermElement.clientWidth - horizontalPadding - screenElement.clientWidth) *
+                      100,
+                  ) / 100
+
+                const screenToScrollbarGapPx =
+                  scrollbarElement.getBoundingClientRect().left -
+                  screenElement.getBoundingClientRect().right
+
+                return {
+                  hasSafetyGap: gutter >= renderMetrics.cssCellWidth,
+                  isTextCloseToScrollbar: screenToScrollbarGapPx <= renderMetrics.cssCellWidth * 2,
+                }
+              }, nodeId),
+          )
+          .toMatchObject({
+            hasSafetyGap: true,
+            isTextCloseToScrollbar: true,
+          })
+        await expect
+          .poll(
+            async () =>
+              await window.evaluate(id => {
+                const api = window.__opencoveTerminalSelectionTestApi
+                const size = api?.getSize(id)
+                const renderMetrics = api?.getRenderMetrics(id)
+                const nodeElement = document.querySelector(
+                  `.react-flow__node[data-id="${id}"] .terminal-node`,
+                )
+                const screenElement = nodeElement?.querySelector('.xterm-screen')
+                if (
+                  !size ||
+                  !renderMetrics?.cssCellWidth ||
+                  !(screenElement instanceof HTMLElement)
+                ) {
+                  return null
+                }
+
+                return (
+                  Math.round(
+                    (size.cols * renderMetrics.cssCellWidth - screenElement.clientWidth) * 100,
+                  ) / 100
+                )
+              }, nodeId),
+          )
+          .toBeLessThanOrEqual(0)
+
+        await expect
+          .poll(
+            async () =>
+              await window.evaluate(id => {
+                const api = window.__opencoveTerminalSelectionTestApi
+                const metrics = api?.getRenderMetrics(id)
+                if (!api || !metrics || metrics.baseY === null) {
+                  return null
+                }
+
+                const targetLine = Math.max(0, metrics.baseY - 30)
+                return api.scrollToLine(id, targetLine) ? api.getViewportY(id) : null
+              }, nodeId),
+            { timeout: 5_000 },
+          )
+          .toEqual(expect.any(Number))
+
+        await expect
+          .poll(
+            async () =>
+              await window.evaluate(id => {
+                const metrics = window.__opencoveTerminalSelectionTestApi?.getRenderMetrics(id)
+                if (
+                  !metrics ||
+                  metrics.baseY === null ||
+                  metrics.viewportY === null ||
+                  metrics.instanceId === null
+                ) {
+                  return null
+                }
+
+                return {
+                  baseY: metrics.baseY,
+                  viewportY: metrics.viewportY,
+                  instanceId: metrics.instanceId,
+                  offsetFromBottom: metrics.baseY - metrics.viewportY,
+                }
+              }, nodeId),
+            { timeout: 5_000 },
+          )
+          .toMatchObject({
+            baseY: expect.any(Number),
+            viewportY: expect.any(Number),
+            instanceId: expect.any(Number),
+            offsetFromBottom: expect.any(Number),
+          })
+        const metricsBeforeZoom = await window.evaluate(id => {
+          const metrics = window.__opencoveTerminalSelectionTestApi?.getRenderMetrics(id)
+          if (
+            !metrics ||
+            metrics.baseY === null ||
+            metrics.viewportY === null ||
+            metrics.instanceId === null
+          ) {
+            return null
+          }
+
+          return {
+            baseY: metrics.baseY,
+            viewportY: metrics.viewportY,
+            instanceId: metrics.instanceId,
+            offsetFromBottom: metrics.baseY - metrics.viewportY,
+          }
+        }, nodeId)
+        expect(metricsBeforeZoom).not.toBeNull()
+        expect(metricsBeforeZoom!.viewportY).toBeLessThan(metricsBeforeZoom!.baseY)
+        expect(metricsBeforeZoom!.offsetFromBottom).toBeGreaterThan(0)
+
+        const zoomInButton = window.locator('.react-flow__controls-zoomin')
+        await expect(zoomInButton).toBeVisible()
+        const zoomBefore = (await readCanvasViewport(window)).zoom
+        await zoomInButton.click()
+        await expect
+          .poll(async () => (await readCanvasViewport(window)).zoom, { timeout: 5_000 })
+          .toBeGreaterThan(zoomBefore)
+        await window.waitForTimeout(150)
+
+        const rightResizer = node.locator('[data-testid="terminal-resizer-right"]')
+        const rightResizerBox = await rightResizer.evaluate(element => {
+          const rect = element.getBoundingClientRect()
+          return {
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+          }
+        })
+        await window.mouse.move(
+          rightResizerBox.x + rightResizerBox.width / 2,
+          rightResizerBox.y + rightResizerBox.height / 2,
+        )
+        await window.mouse.down()
+        await window.mouse.move(
+          rightResizerBox.x + rightResizerBox.width / 2 + 96,
+          rightResizerBox.y + rightResizerBox.height / 2,
+          {
+            steps: 8,
+          },
+        )
+        await window.mouse.up()
+
+        await expect
+          .poll(
+            async () =>
+              await window.evaluate(
+                ({ id, instanceIdBeforeZoom }) => {
+                  const metrics = window.__opencoveTerminalSelectionTestApi?.getRenderMetrics(id)
+                  if (
+                    !metrics ||
+                    metrics.baseY === null ||
+                    metrics.viewportY === null ||
+                    metrics.instanceId === null
+                  ) {
+                    return false
+                  }
+
+                  return (
+                    metrics.instanceId === instanceIdBeforeZoom && metrics.viewportY < metrics.baseY
+                  )
+                },
+                {
+                  id: nodeId,
+                  instanceIdBeforeZoom: metricsBeforeZoom!.instanceId,
+                },
+              ),
+            { timeout: 5_000 },
+          )
+          .toBe(true)
+
+        await xterm.click()
+        await expect(node.locator('.xterm-helper-textarea')).toBeFocused()
+        await window.keyboard.type(
+          buildNodeEvalCommand(`
+            const lines = Array.from({ length: 120 }, (_, index) => 'OPENCOVE_REDRAW_' + index.toString().padStart(3, '0')).join('\\n')
+            process.stdout.write('\\u001b[2J\\u001b[H' + lines + '\\n')
+            setInterval(() => {}, 1000)
+          `),
+        )
+        await window.keyboard.press('Enter')
+        await expect(node).toContainText('OPENCOVE_REDRAW_119', { timeout: 20_000 })
+
+        await expect
+          .poll(
+            async () =>
+              await window.evaluate(id => {
+                const api = window.__opencoveTerminalSelectionTestApi
+                const metrics = api?.getRenderMetrics(id)
+                return metrics?.viewportY === null || metrics?.baseY === null
+                  ? null
+                  : metrics.viewportY > 0 && metrics.viewportY >= metrics.baseY
+              }, nodeId),
+            { timeout: 5_000 },
+          )
+          .toBe(true)
+
+        await expect
+          .poll(
+            async () =>
+              await window.evaluate(id => {
+                const api = window.__opencoveTerminalSelectionTestApi
+                const size = api?.getSize(id)
+                const renderMetrics = api?.getRenderMetrics(id)
+                const nodeElement = document.querySelector(
+                  `.react-flow__node[data-id="${id}"] .terminal-node`,
+                )
+                const screenElement = nodeElement?.querySelector('.xterm-screen')
+                if (
+                  !size ||
+                  !renderMetrics?.cssCellWidth ||
+                  !(screenElement instanceof HTMLElement)
+                ) {
+                  return null
+                }
+                const targetCol = Math.max(size.cols - 1, 1)
+                const targetRow = Math.max(size.rows - 1, 1)
+                const center = api?.getCellCenter(id, targetCol, targetRow)
+                if (!center) {
+                  return null
+                }
+                const target = document.elementFromPoint(center.x, center.y)
+
+                return {
+                  insideScreen: target?.closest('.xterm-screen') === screenElement,
+                  screenOverflow:
+                    Math.round(
+                      (size.cols * renderMetrics.cssCellWidth - screenElement.clientWidth) * 100,
+                    ) / 100,
+                }
+              }, nodeId),
+            { timeout: 5_000 },
+          )
+          .toMatchObject({
+            insideScreen: true,
+            screenOverflow: expect.any(Number),
           })
       }
 

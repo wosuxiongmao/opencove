@@ -1,5 +1,9 @@
 import type { Terminal } from '@xterm/xterm'
 import { cancelTerminalOutputDrain, scheduleTerminalOutputDrain } from './terminalOutputFrameBudget'
+import {
+  captureTerminalScrollState,
+  restoreTerminalScrollStateAfterRedraw,
+} from './effectiveDevicePixelRatio'
 
 export interface TerminalOutputScheduler {
   handleChunk: (
@@ -195,7 +199,9 @@ export function createTerminalOutputScheduler({
     }
 
     hasWriteInFlight = true
+    const scrollState = captureTerminalScrollState(terminal)
     terminal.write(chunk, () => {
+      restoreTerminalScrollStateAfterRedraw(terminal, scrollState)
       hasWriteInFlight = false
       isDraining = false
       onWriteCommitted?.(chunk)

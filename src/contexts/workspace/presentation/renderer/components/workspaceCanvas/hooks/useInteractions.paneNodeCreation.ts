@@ -5,7 +5,7 @@ import {
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import { isAllocateProjectPlaceholderPath } from '@app/renderer/shell/utils/projectPlaceholderPath'
-import { resolveTerminalPtyGeometryForNodeFrame } from '@contexts/workspace/domain/terminalPtyGeometry'
+import { resolveTerminalPtyGeometryForNodeFrame, type TerminalPtyGeometryDisplayMetrics } from '@contexts/workspace/domain/terminalPtyGeometry'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import type { Point, TerminalNodeData, WebsiteNodeData, WorkspaceSpaceState } from '../../../types'
 import type { BrowserMode, SpawnTerminalResult } from '@shared/contracts/dto'
@@ -37,6 +37,7 @@ export async function createTerminalNodeAtFlowPosition({
   defaultTerminalProfileId,
   standardWindowSizeBucket,
   terminalFontSize = DEFAULT_AGENT_SETTINGS.terminalFontSize,
+  terminalDisplayMetrics,
   workspacePath,
   environmentVariables,
   spacesRef,
@@ -53,6 +54,7 @@ export async function createTerminalNodeAtFlowPosition({
   defaultTerminalProfileId: string | null
   standardWindowSizeBucket: StandardWindowSizeBucket
   terminalFontSize?: number
+  terminalDisplayMetrics?: TerminalPtyGeometryDisplayMetrics | null
   workspacePath: string
   environmentVariables?: Record<string, string>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
@@ -75,6 +77,7 @@ export async function createTerminalNodeAtFlowPosition({
   const launchGeometry = resolveTerminalPtyGeometryForNodeFrame({
     ...resolveDefaultTerminalWindowSize(standardWindowSizeBucket),
     terminalFontSize,
+    displayMetrics: terminalDisplayMetrics,
   })
 
   let targetSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)

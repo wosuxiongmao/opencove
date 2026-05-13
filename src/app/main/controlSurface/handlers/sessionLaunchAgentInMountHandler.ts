@@ -39,6 +39,12 @@ import {
   normalizeOptionalPositiveInt,
   resolvePathFromFileSystemUriOrThrow,
 } from './sessionLaunchPayloadSupport'
+import {
+  describeAgentLaunchCommand,
+  describeAgentLaunchError,
+  logAgentLaunchError,
+  logAgentLaunchInfo,
+} from '../../diagnostics/agentLaunchRuntimeDiagnostics'
 
 const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
 
@@ -157,6 +163,22 @@ export function registerSessionLaunchAgentInMountHandler(
     kind: 'command',
     validate: normalizeLaunchAgentInMountPayload,
     handle: async (_ctx, payload): Promise<LaunchAgentSessionResult> => {
+      logAgentLaunchInfo(
+        'control-surface-mount-received',
+        'Control surface received session.launchAgentInMount.',
+        {
+          mountId: payload.mountId,
+          provider: payload.provider ?? null,
+          mode: payload.mode ?? 'new',
+          cwdUriPresent: !!payload.cwdUri,
+          promptLength: payload.prompt.length,
+          resumeSessionIdPresent: !!payload.resumeSessionId,
+          executablePathOverridePresent: !!payload.executablePathOverride,
+          agentFullAccess: payload.agentFullAccess ?? null,
+          cols: payload.cols ?? null,
+          rows: payload.rows ?? null,
+        },
+      )
       const target = await deps.topology.resolveMountTarget({ mountId: payload.mountId })
       if (!target) {
         throw createAppError('common.invalid_input', {
@@ -175,6 +197,21 @@ export function registerSessionLaunchAgentInMountHandler(
       const mode = payload.mode ?? 'new'
 
       if (target.endpointId !== 'local') {
+        logAgentLaunchInfo(
+          'control-surface-mount-remote-forward-start',
+          'Forwarding agent launch to remote endpoint.',
+          {
+            mountId: payload.mountId,
+            endpointId: target.endpointId,
+            targetRootPath: target.rootPath,
+            cwd,
+            provider: payload.provider ?? null,
+            mode,
+            executablePathOverridePresent: !!payload.executablePathOverride,
+            cols: payload.cols ?? null,
+            rows: payload.rows ?? null,
+          },
+        )
         const endpoint = await deps.topology.resolveRemoteEndpointConnection(target.endpointId)
         if (!endpoint) {
           throw createAppError('worker.unavailable', {
@@ -208,6 +245,7 @@ export function registerSessionLaunchAgentInMountHandler(
               model: payload.model ?? null,
               resumeSessionId: payload.resumeSessionId ?? null,
               env: payload.env ?? null,
+              executablePathOverride: payload.executablePathOverride ?? null,
               agentFullAccess: payload.agentFullAccess ?? null,
               cols: payload.cols,
               rows: payload.rows,
@@ -219,6 +257,19 @@ export function registerSessionLaunchAgentInMountHandler(
           }
 
           if (agentLaunchResult.result.ok === false) {
+            logAgentLaunchError(
+              'control-surface-mount-remote-launch-failed',
+              'Remote endpoint returned an agent launch error.',
+              {
+                mountId: payload.mountId,
+                endpointId: target.endpointId,
+                provider: payload.provider ?? null,
+                mode,
+                errorName: agentLaunchResult.result.error.code,
+                errorMessage: agentLaunchResult.result.error.debugMessage ?? null,
+                errorStack: null,
+              },
+            )
             throw createAppError(agentLaunchResult.result.error)
           }
 
@@ -236,6 +287,21 @@ export function registerSessionLaunchAgentInMountHandler(
           endpointId: target.endpointId,
           remoteSessionId,
         })
+        logAgentLaunchInfo(
+          'control-surface-mount-remote-session-registered',
+          'Registered remote agent session in home runtime.',
+          {
+            mountId: payload.mountId,
+            endpointId: target.endpointId,
+            remoteSessionId,
+            homeSessionId,
+            provider: remoteResult.provider,
+            command: remoteResult.command,
+            argCount: remoteResult.args.length,
+            cols: payload.cols ?? 80,
+            rows: payload.rows ?? 24,
+          },
+        )
 
         deps.ptyStreamHub.registerSessionMetadata({
           sessionId: homeSessionId,
@@ -310,6 +376,21 @@ export function registerSessionLaunchAgentInMountHandler(
         payload.executablePathOverride ??
         resolveAgentExecutablePathOverride(agentSettings, provider)
       const agentFullAccess = payload.agentFullAccess ?? agentSettings.agentFullAccess
+      logAgentLaunchInfo(
+        'control-surface-mount-local-resolved-settings',
+        'Resolved local mount agent launch settings.',
+        {
+          mountId: payload.mountId,
+          provider,
+          mode,
+          cwd,
+          modelPresent: !!model,
+          executablePathOverridePresent: !!executablePathOverride,
+          agentFullAccess,
+          cols: payload.cols ?? 80,
+          rows: payload.rows ?? 24,
+        },
+      )
 
       const testStub = resolveWorkerAgentTestStub({
         provider,
@@ -338,6 +419,18 @@ export function registerSessionLaunchAgentInMountHandler(
             agentFullAccess,
             opencodeServer,
           })
+      logAgentLaunchInfo(
+        'control-surface-mount-local-command-built',
+        'Built local mount agent launch command before spawn resolution.',
+        describeAgentLaunchCommand({
+          provider,
+          mode,
+          cwd,
+          command: launchCommand.command,
+          args: launchCommand.args,
+          executablePathOverride,
+        }),
+      )
 
       const startedAtMs = Date.now()
       const startedAt = new Date(startedAtMs).toISOString()
@@ -371,20 +464,93 @@ export function registerSessionLaunchAgentInMountHandler(
         provider: testStub ? null : provider,
         executablePathOverride,
         ...(mergedEnv ? { env: mergedEnv } : {}),
+      }).catch(error => {
+        logAgentLaunchError(
+          'control-surface-mount-local-spawn-resolve-failed',
+          'Failed to resolve local mount spawn.',
+          {
+            mountId: payload.mountId,
+            provider,
+            mode,
+            cwd,
+            ...describeAgentLaunchError(error),
+          },
+        )
+        throw error
       })
+      logAgentLaunchInfo(
+        'control-surface-mount-local-spawn-resolved',
+        'Resolved local mount agent spawn command.',
+        describeAgentLaunchCommand({
+          provider,
+          mode,
+          cwd: resolvedSpawn.cwd,
+          command: resolvedSpawn.command,
+          args: resolvedSpawn.args,
+          executablePathOverride,
+          env: resolvedSpawn.env,
+        }),
+      )
       const geminiDiscoveryCursor =
         provider === 'gemini' && mode === 'new'
           ? await captureGeminiSessionDiscoveryCursor(cwd).catch(() => null)
           : undefined
 
-      const { sessionId } = await deps.ptyRuntime.spawnSession({
-        cwd: resolvedSpawn.cwd,
-        cols: payload.cols ?? 80,
-        rows: payload.rows ?? 24,
-        command: resolvedSpawn.command,
-        args: resolvedSpawn.args,
-        ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
-      })
+      const spawnCols = payload.cols ?? 80
+      const spawnRows = payload.rows ?? 24
+      logAgentLaunchInfo(
+        'control-surface-mount-local-pty-spawn-start',
+        'Spawning local mount agent PTY session.',
+        {
+          mountId: payload.mountId,
+          provider,
+          mode,
+          cwd: resolvedSpawn.cwd,
+          cols: spawnCols,
+          rows: spawnRows,
+          command: resolvedSpawn.command,
+          argCount: resolvedSpawn.args.length,
+        },
+      )
+      const { sessionId } = await deps.ptyRuntime
+        .spawnSession({
+          cwd: resolvedSpawn.cwd,
+          cols: spawnCols,
+          rows: spawnRows,
+          command: resolvedSpawn.command,
+          args: resolvedSpawn.args,
+          ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
+        })
+        .catch(error => {
+          logAgentLaunchError(
+            'control-surface-mount-local-pty-spawn-failed',
+            'Local mount PTY spawn failed.',
+            {
+              mountId: payload.mountId,
+              provider,
+              mode,
+              cwd: resolvedSpawn.cwd,
+              cols: spawnCols,
+              rows: spawnRows,
+              command: resolvedSpawn.command,
+              ...describeAgentLaunchError(error),
+            },
+          )
+          throw error
+        })
+      logAgentLaunchInfo(
+        'control-surface-mount-local-pty-spawn-succeeded',
+        'Local mount agent PTY session spawned.',
+        {
+          mountId: payload.mountId,
+          provider,
+          mode,
+          cwd: resolvedSpawn.cwd,
+          sessionId,
+          cols: spawnCols,
+          rows: spawnRows,
+        },
+      )
 
       startAgentSessionStateWatcherIfEnabled({
         ptyRuntime: deps.ptyRuntime,

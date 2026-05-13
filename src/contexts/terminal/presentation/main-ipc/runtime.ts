@@ -24,6 +24,12 @@ import type { GeminiSessionDiscoveryCursor } from '../../../agent/infrastructure
 import { createSessionStateWatcherController } from './sessionStateWatcher'
 import { TerminalSessionManager } from './sessionManager'
 import { isDebugCrashHostEnabled } from './debugCrashHost'
+import {
+  describeAgentLaunchCommand,
+  describeAgentLaunchError,
+  logAgentLaunchError,
+  logAgentLaunchInfo,
+} from '../../../../app/main/diagnostics/agentLaunchRuntimeDiagnostics'
 
 export interface StartSessionStateWatcherInput {
   sessionId: string
@@ -288,19 +294,53 @@ export function createPtyRuntime(): PtyRuntime {
       const command = options.command ?? options.shell ?? resolveDefaultShell()
       const args = options.command ? (options.args ?? []) : []
       const env = options.env ? { ...process.env, ...options.env } : undefined
+      logAgentLaunchInfo(
+        'local-pty-runtime-spawn-start',
+        'Local PTY runtime received spawnSession.',
+        {
+          ...describeAgentLaunchCommand({
+            provider: null,
+            mode: null,
+            cwd: options.cwd,
+            command,
+            args,
+            env,
+          }),
+          cols: options.cols,
+          rows: options.rows,
+        },
+      )
 
-      const { sessionId } = await ptyHost.spawn({
-        cwd: options.cwd,
-        command,
-        args,
-        env,
-        cols: options.cols,
-        rows: options.rows,
-      })
+      const { sessionId } = await ptyHost
+        .spawn({
+          cwd: options.cwd,
+          command,
+          args,
+          env,
+          cols: options.cols,
+          rows: options.rows,
+        })
+        .catch(error => {
+          logAgentLaunchError('local-pty-runtime-spawn-failed', 'Local PTY host spawn failed.', {
+            cwd: options.cwd,
+            command,
+            cols: options.cols,
+            rows: options.rows,
+            ...describeAgentLaunchError(error),
+          })
+          throw error
+        })
 
       manager.registerSession(sessionId)
       manager.resize(sessionId, options.cols, options.rows)
       registerSessionProbeState(sessionId)
+      logAgentLaunchInfo('local-pty-runtime-spawn-succeeded', 'Local PTY host spawn succeeded.', {
+        sessionId,
+        cwd: options.cwd,
+        command,
+        cols: options.cols,
+        rows: options.rows,
+      })
       return { sessionId }
     },
     write: async (sessionId, data, encoding = 'utf8') => {

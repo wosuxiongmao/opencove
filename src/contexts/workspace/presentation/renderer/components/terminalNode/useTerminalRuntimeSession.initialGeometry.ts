@@ -4,11 +4,34 @@ import type { Terminal } from '@xterm/xterm'
 import type { PresentationSnapshotTerminalResult, TerminalPtyGeometry } from '@shared/contracts/dto'
 import { resolveInitialTerminalDimensions } from './initialDimensions'
 import { commitInitialTerminalNodeGeometry, refreshTerminalNodeSize } from './syncTerminalNodeSize'
+import { resizeTerminalPreservingScrollState } from './effectiveDevicePixelRatio'
 import type { CachedTerminalScreenState } from './screenStateCache'
 import type { XtermSession } from './xtermSession'
 import type { TerminalHydrationBaselineSource } from './useTerminalRuntimeSession.support'
 
 type PtySize = { cols: number; rows: number }
+
+export function shouldPreferMeasuredInitialGeometryCommit({
+  kind,
+  isLiveSessionReattach,
+  canonicalInitialGeometry,
+  suppressPtyResize,
+}: {
+  kind: 'terminal' | 'agent' | string
+  isLiveSessionReattach: boolean
+  canonicalInitialGeometry: PtySize | null
+  suppressPtyResize: boolean
+}): boolean {
+  if (suppressPtyResize) {
+    return false
+  }
+
+  if (kind === 'agent') {
+    return true
+  }
+
+  return !isLiveSessionReattach && kind === 'terminal' && canonicalInitialGeometry === null
+}
 
 function applyCanonicalGeometryLocally({
   terminalRef,
@@ -27,7 +50,7 @@ function applyCanonicalGeometryLocally({
   }
 
   if (terminal.cols !== geometry.cols || terminal.rows !== geometry.rows) {
-    terminal.resize(geometry.cols, geometry.rows)
+    resizeTerminalPreservingScrollState(terminal, geometry.cols, geometry.rows)
   }
 
   refreshTerminalNodeSize({

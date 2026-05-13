@@ -10,6 +10,9 @@ function AppearanceHarness({
   displayLineHeight = 1,
   displayLetterSpacing = 0,
   fontFamily = null,
+  commitInitialDisplayGeometry = false,
+  width = 640,
+  height = 420,
   onCommitGeometry,
   onSyncSize,
 }: {
@@ -19,6 +22,9 @@ function AppearanceHarness({
   displayLineHeight?: number
   displayLetterSpacing?: number
   fontFamily?: string | null
+  commitInitialDisplayGeometry?: boolean
+  width?: number
+  height?: number
   onCommitGeometry: () => void
   onSyncSize: () => void
 }): null {
@@ -32,9 +38,10 @@ function AppearanceHarness({
     displayTerminalFontSize: displayFontSize,
     displayTerminalLineHeight: displayLineHeight,
     displayTerminalLetterSpacing: displayLetterSpacing,
+    commitInitialDisplayGeometry,
     terminalFontFamily: fontFamily,
-    width: 640,
-    height: 420,
+    width,
+    height,
     viewportZoom: 1,
     isViewportInteractionActive: false,
   })
@@ -55,7 +62,7 @@ describe('useTerminalAppearanceSync', () => {
     vi.restoreAllMocks()
   })
 
-  it('does not commit PTY geometry when only local display compensation changes', () => {
+  it('commits PTY geometry when local display compensation changes', () => {
     const terminal = { options: {} }
     const onCommitGeometry = vi.fn()
     const onSyncSize = vi.fn()
@@ -85,16 +92,69 @@ describe('useTerminalAppearanceSync', () => {
       lineHeight: 1.05,
       letterSpacing: 0,
     })
-    expect(onSyncSize).toHaveBeenCalled()
-    expect(onCommitGeometry).not.toHaveBeenCalled()
+    expect(onCommitGeometry).toHaveBeenCalledTimes(1)
   })
 
-  it('does not commit PTY geometry on initial mount or callback-only refreshes', () => {
+  it('commits initial PTY geometry when local display compensation is active', () => {
+    const terminal = { options: {} }
+    const onCommitGeometry = vi.fn()
+    const onSyncSize = vi.fn()
+
+    render(
+      <AppearanceHarness
+        terminal={terminal}
+        sharedFontSize={13}
+        displayFontSize={12.5}
+        displayLineHeight={1.05}
+        commitInitialDisplayGeometry={true}
+        onCommitGeometry={onCommitGeometry}
+        onSyncSize={onSyncSize}
+      />,
+    )
+
+    expect(terminal.options).toMatchObject({
+      fontSize: 12.5,
+      lineHeight: 1.05,
+      letterSpacing: 0,
+    })
+    expect(onCommitGeometry).toHaveBeenCalledTimes(1)
+  })
+
+  it('commits PTY geometry when line height or letter spacing compensation changes', () => {
+    const terminal = { options: {} }
+    const onCommitGeometry = vi.fn()
+    const onSyncSize = vi.fn()
+    const { rerender } = render(
+      <AppearanceHarness
+        terminal={terminal}
+        sharedFontSize={13}
+        displayFontSize={13}
+        onCommitGeometry={onCommitGeometry}
+        onSyncSize={onSyncSize}
+      />,
+    )
+    onSyncSize.mockClear()
+
+    rerender(
+      <AppearanceHarness
+        terminal={terminal}
+        sharedFontSize={13}
+        displayFontSize={12.5}
+        displayLineHeight={1.05}
+        displayLetterSpacing={0.2}
+        onCommitGeometry={onCommitGeometry}
+        onSyncSize={onSyncSize}
+      />,
+    )
+
+    expect(onCommitGeometry).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not sync or commit PTY geometry on callback-only refreshes', () => {
     const terminal = { options: {} }
     const firstCommitGeometry = vi.fn()
-    const firstSyncSize = vi.fn()
     const secondCommitGeometry = vi.fn()
-    const secondSyncSize = vi.fn()
+    const onSyncSize = vi.fn()
     const { rerender } = render(
       <AppearanceHarness
         terminal={terminal}
@@ -102,11 +162,12 @@ describe('useTerminalAppearanceSync', () => {
         displayFontSize={13}
         fontFamily={null}
         onCommitGeometry={firstCommitGeometry}
-        onSyncSize={firstSyncSize}
+        onSyncSize={onSyncSize}
       />,
     )
 
     expect(firstCommitGeometry).not.toHaveBeenCalled()
+    onSyncSize.mockClear()
 
     rerender(
       <AppearanceHarness
@@ -115,13 +176,83 @@ describe('useTerminalAppearanceSync', () => {
         displayFontSize={13}
         fontFamily={null}
         onCommitGeometry={secondCommitGeometry}
-        onSyncSize={secondSyncSize}
+        onSyncSize={onSyncSize}
       />,
     )
 
     expect(firstCommitGeometry).not.toHaveBeenCalled()
     expect(secondCommitGeometry).not.toHaveBeenCalled()
-    expect(secondSyncSize).toHaveBeenCalled()
+    expect(onSyncSize).not.toHaveBeenCalled()
+  })
+
+  it('uses the latest callbacks after ignoring callback-only refreshes', () => {
+    const terminal = { options: {} }
+    const firstCommitGeometry = vi.fn()
+    const secondCommitGeometry = vi.fn()
+    const onSyncSize = vi.fn()
+    const { rerender } = render(
+      <AppearanceHarness
+        terminal={terminal}
+        sharedFontSize={13}
+        displayFontSize={13}
+        onCommitGeometry={firstCommitGeometry}
+        onSyncSize={onSyncSize}
+      />,
+    )
+
+    rerender(
+      <AppearanceHarness
+        terminal={terminal}
+        sharedFontSize={13}
+        displayFontSize={13}
+        onCommitGeometry={secondCommitGeometry}
+        onSyncSize={onSyncSize}
+      />,
+    )
+    rerender(
+      <AppearanceHarness
+        terminal={terminal}
+        sharedFontSize={13}
+        displayFontSize={12.5}
+        onCommitGeometry={secondCommitGeometry}
+        onSyncSize={onSyncSize}
+      />,
+    )
+
+    expect(firstCommitGeometry).not.toHaveBeenCalled()
+    expect(secondCommitGeometry).toHaveBeenCalledTimes(1)
+    expect(onSyncSize).toHaveBeenCalled()
+  })
+
+  it('commits PTY geometry when the terminal frame size changes', () => {
+    const terminal = { options: {} }
+    const onCommitGeometry = vi.fn()
+    const onSyncSize = vi.fn()
+    const { rerender } = render(
+      <AppearanceHarness
+        terminal={terminal}
+        sharedFontSize={13}
+        displayFontSize={13}
+        width={640}
+        height={420}
+        onCommitGeometry={onCommitGeometry}
+        onSyncSize={onSyncSize}
+      />,
+    )
+
+    rerender(
+      <AppearanceHarness
+        terminal={terminal}
+        sharedFontSize={13}
+        displayFontSize={13}
+        width={816}
+        height={420}
+        onCommitGeometry={onCommitGeometry}
+        onSyncSize={onSyncSize}
+      />,
+    )
+
+    expect(onCommitGeometry).toHaveBeenCalledTimes(1)
   })
 
   it('keeps shared font size changes on the explicit appearance geometry path', () => {

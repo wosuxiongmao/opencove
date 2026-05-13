@@ -5,6 +5,7 @@ import {
   containsDestructiveTerminalDisplayControlSequence,
   shouldDeferHydratedTerminalRedrawChunk,
 } from './hydrationReplacement'
+import { resizeTerminalPreservingScrollState } from './effectiveDevicePixelRatio'
 import { formatTerminalDataHeadHex } from './terminalRuntimeDiagnostics'
 import type { createTerminalHydrationRouter } from './hydrationRouter'
 import type { createRestoredAgentVisibilityGate } from './restoredAgentVisibilityGate'
@@ -66,7 +67,7 @@ export function subscribeRuntimeTerminalEvents({
   const unsubscribeGeometry = ptyEventHub.onSessionGeometry(sessionId, event => {
     lastCommittedPtySizeRef.current = { cols: event.cols, rows: event.rows }
     if (terminal.cols !== event.cols || terminal.rows !== event.rows) {
-      terminal.resize(event.cols, event.rows)
+      resizeTerminalPreservingScrollState(terminal, event.cols, event.rows)
     }
     syncTerminalSize()
     scheduleTranscriptSync()

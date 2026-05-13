@@ -9,6 +9,12 @@ import type {
 import { runTaskAgentAction } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskActions.agentSession'
 
 describe('WorkspaceCanvas task run agent auto resize', () => {
+  const terminalDisplayMetrics = {
+    fontSize: DEFAULT_AGENT_SETTINGS.terminalFontSize,
+    lineHeight: 1,
+    letterSpacing: 0,
+  }
+
   function expectedAgentGeometry() {
     return resolveDefaultAgentLaunchGeometry({
       bucket: DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,
@@ -135,6 +141,7 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
       buildAgentNodeTitle: () => 'codex · model',
       launchAgentInNode: vi.fn(async () => undefined),
       agentSettings: DEFAULT_AGENT_SETTINGS,
+      terminalDisplayMetrics,
       workspacePath: '/tmp',
       onRequestPersistFlush: vi.fn(),
     })
@@ -303,6 +310,7 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
         ...DEFAULT_AGENT_SETTINGS,
         defaultTerminalProfileId: 'wsl:Ubuntu',
       },
+      terminalDisplayMetrics,
       workspaceId: 'workspace-1',
       workspacePath: '/tmp',
       onRequestPersistFlush: vi.fn(),

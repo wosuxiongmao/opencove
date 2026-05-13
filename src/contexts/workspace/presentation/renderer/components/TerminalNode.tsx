@@ -4,7 +4,8 @@ import type { FitAddon } from '@xterm/addon-fit'
 import type { Terminal } from '@xterm/xterm'
 import { createTerminalCommandInputState } from './terminalNode/commandInput'
 import {
-  commitTerminalNodeGeometry,
+  commitSettledTerminalNodeGeometry,
+  fitTerminalNodeToMeasuredSize,
   refreshTerminalNodeSize,
 } from './terminalNode/syncTerminalNodeSize'
 import {
@@ -131,6 +132,16 @@ export function TerminalNode({
   const displayTerminalFontSize = terminalDisplayCalibration?.fontSize ?? terminalFontSize
   const displayTerminalLineHeight = terminalDisplayCalibration?.lineHeight ?? 1
   const displayTerminalLetterSpacing = terminalDisplayCalibration?.letterSpacing ?? 0
+  const displayTerminalMetricsRef = useRef({
+    fontSize: displayTerminalFontSize,
+    lineHeight: displayTerminalLineHeight,
+    letterSpacing: displayTerminalLetterSpacing,
+  })
+  displayTerminalMetricsRef.current = {
+    fontSize: displayTerminalFontSize,
+    lineHeight: displayTerminalLineHeight,
+    letterSpacing: displayTerminalLetterSpacing,
+  }
 
   latestSessionIdRef.current = sessionId
 
@@ -256,12 +267,18 @@ export function TerminalNode({
 
   const commitTerminalGeometry = useCallback(
     (reason: 'frame_commit' | 'appearance_commit') => {
-      if (suppressPtyResizeRef.current) {
-        syncTerminalSize()
+      if (suppressPtyResizeRef.current || sessionId.trim().length === 0) {
+        fitTerminalNodeToMeasuredSize({
+          terminalRef,
+          fitAddonRef,
+          containerRef,
+          isPointerResizingRef,
+        })
         return
       }
 
-      commitTerminalNodeGeometry({
+      const committedSessionId = sessionId
+      void commitSettledTerminalNodeGeometry({
         terminalRef,
         fitAddonRef,
         containerRef,
@@ -269,10 +286,14 @@ export function TerminalNode({
         lastCommittedPtySizeRef,
         sessionId,
         reason,
+        shouldCommit: () => latestSessionIdRef.current === committedSessionId,
+      }).then(() => {
+        if (latestSessionIdRef.current === committedSessionId) {
+          scheduleWebglCanvasTransformCleanup()
+        }
       })
-      scheduleWebglCanvasTransformCleanup()
     },
-    [scheduleWebglCanvasTransformCleanup, sessionId, syncTerminalSize],
+    [scheduleWebglCanvasTransformCleanup, sessionId],
   )
 
   const requestTerminalRendererRecovery = useCallback(
@@ -360,9 +381,11 @@ export function TerminalNode({
     cancelWebglCanvasTransformCleanup,
     setRendererKindAndApply,
     terminalFontSize,
+    terminalFontFamily,
     viewportZoomRef,
     preferredRendererMode,
     terminalClientResetVersion,
+    displayTerminalMetricsRef,
   })
 
   useTerminalRuntimeSession({
@@ -409,6 +432,8 @@ export function TerminalNode({
     cancelWebglCanvasTransformCleanup,
     setRendererKindAndApply,
     terminalFontSize,
+    terminalFontFamily,
+    displayTerminalMetricsRef,
     viewportZoomRef,
     preferredRendererMode,
     terminalClientResetVersion,
@@ -425,6 +450,7 @@ export function TerminalNode({
     displayTerminalFontSize,
     displayTerminalLineHeight,
     displayTerminalLetterSpacing,
+    commitInitialDisplayGeometry: terminalDisplayCalibration !== null,
     terminalFontFamily,
     width,
     height,

@@ -129,4 +129,60 @@ describe('CommandEnvironmentService', () => {
     ])
     expect(getShellEnvironmentSnapshotMock).not.toHaveBeenCalled()
   })
+
+  it('preserves a Windows process Path key when normalizing command PATH', async () => {
+    setPlatform('win32')
+    process.env = {
+      NODE_ENV: 'production',
+      Path: 'E:\\node-v22.17.0-win-x64\\node_global',
+      USERPROFILE: 'C:\\Users\\tester',
+    } as NodeJS.ProcessEnv
+
+    const { getCommandEnvironmentSnapshot } = await importCommandEnvironmentService()
+    const snapshot = await getCommandEnvironmentSnapshot()
+
+    expect(snapshot.source).toBe('process_env')
+    expect(snapshot.env.PATH?.split(';')[0]).toBe('E:\\node-v22.17.0-win-x64\\node_global')
+    expect(snapshot.env.Path).toBeUndefined()
+    expect(snapshot.diagnostics).toContain(
+      'Appended stable Windows command fallback directories to the current process PATH.',
+    )
+    expect(snapshot.diagnostics).toContain('Canonicalized Windows process Path key to PATH.')
+    expect(getShellEnvironmentSnapshotMock).not.toHaveBeenCalled()
+  })
+
+  it('canonicalizes a Windows process Path key even when no fallback segments are appended', async () => {
+    setPlatform('win32')
+    process.env = {
+      NODE_ENV: 'production',
+      Path: [
+        'C:\\Windows\\System32',
+        'C:\\Users\\tester\\AppData\\Roaming\\npm',
+        'C:\\Users\\tester\\AppData\\Local\\pnpm',
+        'C:\\Users\\tester\\AppData\\Local\\Volta\\bin',
+        'C:\\Users\\tester\\scoop\\shims',
+        'C:\\ProgramData\\scoop\\shims',
+        'C:\\Program Files\\nodejs',
+        'C:\\Program Files\\nodejs\\node_global',
+      ].join(';'),
+      USERPROFILE: 'C:\\Users\\tester',
+      APPDATA: 'C:\\Users\\tester\\AppData\\Roaming',
+      LOCALAPPDATA: 'C:\\Users\\tester\\AppData\\Local',
+      SCOOP: 'C:\\Users\\tester\\scoop',
+      ProgramData: 'C:\\ProgramData',
+      ProgramFiles: 'C:\\Program Files',
+    } as NodeJS.ProcessEnv
+
+    const { getCommandEnvironmentSnapshot } = await importCommandEnvironmentService()
+    const snapshot = await getCommandEnvironmentSnapshot()
+
+    expect(snapshot.source).toBe('process_env')
+    expect(snapshot.env.PATH?.split(';')[0]).toBe('C:\\Windows\\System32')
+    expect(snapshot.env.Path).toBeUndefined()
+    expect(snapshot.diagnostics).toEqual([
+      'Windows uses the current process environment for command execution.',
+      'Canonicalized Windows process Path key to PATH.',
+    ])
+    expect(getShellEnvironmentSnapshotMock).not.toHaveBeenCalled()
+  })
 })

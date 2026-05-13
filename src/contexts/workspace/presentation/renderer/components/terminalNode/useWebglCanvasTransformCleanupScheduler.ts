@@ -55,6 +55,9 @@ export function useWebglCanvasTransformCleanupScheduler(input: {
   const setRendererKindAndApply = useCallback(
     (kind: TerminalRendererKind) => {
       activeRendererKindRef.current = kind
+      if (containerRef.current) {
+        containerRef.current.dataset.coveTerminalRenderer = kind
+      }
       clearWebglCanvasTransform({
         container: containerRef.current,
         rendererKind: kind,

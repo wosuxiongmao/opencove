@@ -44,6 +44,8 @@ export function useTerminalPlaceholderSession({
   cancelWebglCanvasTransformCleanup,
   setRendererKindAndApply,
   terminalFontSize,
+  terminalFontFamily,
+  displayTerminalMetricsRef,
   viewportZoomRef,
   preferredRendererMode,
   terminalClientResetVersion,
@@ -77,6 +79,14 @@ export function useTerminalPlaceholderSession({
   cancelWebglCanvasTransformCleanup: () => void
   setRendererKindAndApply: (kind: TerminalRendererKind) => void
   terminalFontSize: number
+  terminalFontFamily: string | null
+  displayTerminalMetricsRef: {
+    current: {
+      fontSize: number
+      lineHeight: number
+      letterSpacing: number
+    }
+  }
   viewportZoomRef: { current: number }
   preferredRendererMode: PreferredTerminalRendererMode
   terminalClientResetVersion: number
@@ -108,6 +118,7 @@ export function useTerminalPlaceholderSession({
       window.opencoveApi.meta?.enableTerminalInputDiagnostics === true
     const logTerminalDiagnostics =
       window.opencoveApi.debug?.logTerminalDiagnostics ?? (() => undefined)
+    const displayTerminalMetrics = displayTerminalMetricsRef.current
 
     suppressPtyResizeRef.current = false
     const session = createMountedXtermSession({
@@ -124,7 +135,10 @@ export function useTerminalPlaceholderSession({
       windowsPty,
       cursorBlink: false,
       disableStdin: false,
-      fontSize: terminalFontSize,
+      fontSize: displayTerminalMetrics.fontSize,
+      fontFamily: terminalFontFamily,
+      lineHeight: displayTerminalMetrics.lineHeight,
+      letterSpacing: displayTerminalMetrics.letterSpacing,
       bindSearchAddonToFind,
       syncTerminalSize,
       diagnosticsEnabled,
@@ -271,6 +285,8 @@ export function useTerminalPlaceholderSession({
     containerRef,
     shouldRestoreTerminalFocusRef,
     terminalFontSize,
+    terminalFontFamily,
+    displayTerminalMetricsRef,
     viewportZoomRef,
     preferredRendererMode,
     terminalClientResetVersion,

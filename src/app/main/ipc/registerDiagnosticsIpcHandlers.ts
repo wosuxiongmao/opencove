@@ -1,4 +1,6 @@
-import { ipcMain } from 'electron'
+import { app, ipcMain } from 'electron'
+import { appendFileSync, mkdirSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
 import type {
   PerformanceDiagnosticsSnapshotResult,
@@ -25,6 +27,17 @@ function writeTerminalDiagnosticsLine(payload: TerminalDiagnosticsLogInput): voi
   })
 
   process.stdout.write(`[opencove-terminal-diagnostics] ${line}\n`)
+  appendTerminalDiagnosticsFile(line)
+}
+
+function appendTerminalDiagnosticsFile(line: string): void {
+  try {
+    const filePath = resolve(app.getPath('userData'), 'logs', 'terminal-diagnostics.log')
+    mkdirSync(dirname(filePath), { recursive: true })
+    appendFileSync(filePath, `${line}\n`, { encoding: 'utf8', mode: 0o600 })
+  } catch {
+    // Diagnostics logging must never affect app runtime behavior.
+  }
 }
 
 function normalizePerformanceDiagnosticsSnapshotPayload(payload: unknown): null {
@@ -44,7 +57,6 @@ export function registerDiagnosticsIpcHandlers(): IpcRegistrationDisposable {
     }
   }
 
-  const runtimeLogger = createMainRuntimeDiagnosticsLogger('renderer-error-boundary')
   const handleTerminalDiagnosticsLog = (
     _event: Electron.IpcMainEvent,
     payload: TerminalDiagnosticsLogInput,
@@ -60,6 +72,7 @@ export function registerDiagnosticsIpcHandlers(): IpcRegistrationDisposable {
     _event: Electron.IpcMainEvent,
     payload: RuntimeDiagnosticsLogInput,
   ): void => {
+    const runtimeLogger = createMainRuntimeDiagnosticsLogger(payload.source)
     if (payload.level === 'error') {
       runtimeLogger.error(payload.event, payload.message, payload.details)
       return

@@ -58,6 +58,15 @@ function maybeTerminateOptionParsing(args: string[], value: string): void {
   }
 }
 
+function appendCodexAccessArgs(args: string[], agentFullAccess: boolean): void {
+  if (agentFullAccess) {
+    args.push('--dangerously-bypass-approvals-and-sandbox')
+    return
+  }
+
+  args.push('--sandbox', 'workspace-write', '--ask-for-approval', 'on-request')
+}
+
 export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): AgentLaunchCommand {
   const effectiveModel = normalizeOptionalValue(input.model)
   const resumeSessionId = normalizeOptionalValue(input.resumeSessionId)
@@ -199,11 +208,9 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
       throw new Error('codex resume requires explicit session id')
     }
 
-    const args = [
-      agentFullAccess ? '--dangerously-bypass-approvals-and-sandbox' : '--full-auto',
-      'resume',
-      resumeSessionId,
-    ]
+    const args: string[] = []
+    appendCodexAccessArgs(args, agentFullAccess)
+    args.push('resume', resumeSessionId)
 
     if (effectiveModel) {
       args.push('--model', effectiveModel)
@@ -218,7 +225,8 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
     }
   }
 
-  const args = [agentFullAccess ? '--dangerously-bypass-approvals-and-sandbox' : '--full-auto']
+  const args: string[] = []
+  appendCodexAccessArgs(args, agentFullAccess)
 
   if (effectiveModel) {
     args.push('--model', effectiveModel)

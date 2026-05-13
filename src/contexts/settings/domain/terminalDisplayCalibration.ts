@@ -33,11 +33,16 @@ export interface TerminalClientDisplayCalibration {
     TerminalDisplayMeasurement,
     'cols' | 'rows' | 'cssCellWidth' | 'cssCellHeight' | 'effectiveDpr'
   >
+  measured?: Pick<
+    TerminalDisplayMeasurement,
+    'cols' | 'rows' | 'cssCellWidth' | 'cssCellHeight' | 'effectiveDpr'
+  >
   score: number
   measuredAt: string
 }
 
 export type TerminalDisplayCalibrationQuality = 'exact' | 'close' | 'needsAdjustment'
+export const TERMINAL_DISPLAY_CALIBRATION_LINE_HEIGHT = 1
 
 function isPositiveNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0
@@ -130,6 +135,25 @@ export function resolveTerminalDisplayCalibrationCompensation({
   return compensationEnabled ? calibration : null
 }
 
+export function createTerminalDisplayCalibrationSignature(
+  calibration: TerminalClientDisplayCalibration | null,
+): string {
+  if (!calibration) {
+    return 'none'
+  }
+
+  return JSON.stringify({
+    version: calibration.version,
+    profileKey: calibration.profileKey,
+    fontSize: calibration.fontSize,
+    lineHeight: calibration.lineHeight,
+    letterSpacing: calibration.letterSpacing,
+    target: calibration.target,
+    measured: calibration.measured ?? null,
+    score: calibration.score,
+  })
+}
+
 export function isTerminalDisplayReferenceForProfile(
   reference: TerminalDisplayReference | null,
   {
@@ -206,11 +230,28 @@ export function normalizeTerminalClientDisplayCalibration(
     return null
   }
 
+  const measured = isRecord(value.measured) ? value.measured : null
+  const normalizedMeasured =
+    measured &&
+    isPositiveNumber(measured.cols) &&
+    isPositiveNumber(measured.rows) &&
+    isPositiveNumber(measured.cssCellWidth) &&
+    isPositiveNumber(measured.cssCellHeight) &&
+    isPositiveNumber(measured.effectiveDpr)
+      ? {
+          cols: Math.round(measured.cols),
+          rows: Math.round(measured.rows),
+          cssCellWidth: measured.cssCellWidth,
+          cssCellHeight: measured.cssCellHeight,
+          effectiveDpr: measured.effectiveDpr,
+        }
+      : null
+
   return {
     version: 1,
     profileKey,
     fontSize: value.fontSize,
-    lineHeight: value.lineHeight,
+    lineHeight: TERMINAL_DISPLAY_CALIBRATION_LINE_HEIGHT,
     letterSpacing: value.letterSpacing,
     target: {
       cols: Math.round(target.cols),
@@ -219,6 +260,7 @@ export function normalizeTerminalClientDisplayCalibration(
       cssCellHeight: target.cssCellHeight,
       effectiveDpr: target.effectiveDpr,
     },
+    ...(normalizedMeasured ? { measured: normalizedMeasured } : {}),
     score: value.score,
     measuredAt: normalizeTextValue(value.measuredAt) || new Date().toISOString(),
   }

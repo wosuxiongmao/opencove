@@ -244,6 +244,19 @@
   overflow-y: hidden;
 }
 
+.terminal-node__terminal .xterm .xterm-scrollable-element > .scrollbar.vertical {
+  opacity: 1;
+  pointer-events: auto;
+  background: transparent;
+}
+
+.terminal-node__terminal .xterm-decoration-overview-ruler {
+  display: none !important;
+  width: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 .terminal-node__resizer {
   position: absolute;
   background: transparent;
@@ -255,16 +268,16 @@
 .terminal-node__resizer--right {
   top: 34px;
   bottom: 8px;
-  width: 10px;
+  width: 4px;
   cursor: ew-resize;
 }
 
 .terminal-node__resizer--left {
-  left: 0;
+  left: -1px;
 }
 
 .terminal-node__resizer--right {
-  right: 0;
+  right: -1px;
 }
 
 .terminal-node__resizer--bottom {

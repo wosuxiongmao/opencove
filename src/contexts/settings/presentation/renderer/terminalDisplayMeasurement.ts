@@ -38,7 +38,7 @@ export const TERMINAL_DISPLAY_MEASUREMENT_HEIGHT = 384
 export const TERMINAL_DISPLAY_MEASUREMENT_HANDLES_CHANGED =
   'opencove:terminal-display-measurement-handles-changed'
 
-const DEFAULT_LINE_HEIGHTS = [1, 1.05, 1.1]
+const DEFAULT_LINE_HEIGHTS = [1]
 const DEFAULT_LETTER_SPACINGS = [0]
 const terminalDisplayMeasurementHandles = new Map<
   string,
@@ -58,7 +58,9 @@ function readRuntime(): TerminalDisplayMeasurement['runtime'] {
   return runtime === 'browser' ? 'browser' : runtime === 'electron' ? 'desktop' : 'unknown'
 }
 
-function buildCandidates(baseFontSize: number): TerminalDisplayCandidate[] {
+export function buildTerminalDisplayCalibrationCandidates(
+  baseFontSize: number,
+): TerminalDisplayCandidate[] {
   const candidates: TerminalDisplayCandidate[] = []
   for (let fontSize = baseFontSize - 1.5; fontSize <= baseFontSize + 1.5; fontSize += 0.25) {
     for (const lineHeight of DEFAULT_LINE_HEIGHTS) {
@@ -349,18 +351,23 @@ export async function calibrateTerminalDisplayProfile({
 
   try {
     const results: TerminalDisplayCandidateResult[] = []
-    await buildCandidates(terminalFontSize).reduce(async (previous, candidate) => {
-      await previous
-      await applyCandidate(measuredTerminal.terminal, candidate)
-      const measurement = readMeasurement({
-        terminal: measuredTerminal.terminal,
-        fitAddon: measuredTerminal.fitAddon,
-        fontFamily: terminalFontFamily,
-      })
-      if (measurement) {
-        results.push(scoreMeasurement(candidate, measurement, reference.measurement, baseCandidate))
-      }
-    }, Promise.resolve())
+    await buildTerminalDisplayCalibrationCandidates(terminalFontSize).reduce(
+      async (previous, candidate) => {
+        await previous
+        await applyCandidate(measuredTerminal.terminal, candidate)
+        const measurement = readMeasurement({
+          terminal: measuredTerminal.terminal,
+          fitAddon: measuredTerminal.fitAddon,
+          fontFamily: terminalFontFamily,
+        })
+        if (measurement) {
+          results.push(
+            scoreMeasurement(candidate, measurement, reference.measurement, baseCandidate),
+          )
+        }
+      },
+      Promise.resolve(),
+    )
     return results.sort(compareCandidateResults)[0] ?? null
   } finally {
     measuredTerminal.dispose()

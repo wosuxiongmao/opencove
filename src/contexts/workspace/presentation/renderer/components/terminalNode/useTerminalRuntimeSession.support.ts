@@ -391,19 +391,29 @@ export function prepareRuntimePresentationAttach(options: {
     sessionId: options.sessionId,
     presentationSnapshotPromise: preAttachPresentationSnapshotPromise,
   })
-  const initialGeometryCommitPromise = options.isLiveSessionReattach
-    ? Promise.resolve(null)
-    : attachPromise
-        .catch(() => undefined)
-        .then(async () => {
-          const baselineSnapshot = await preAttachPresentationSnapshotPromise
-          return await options.commitInitialGeometry(baselineSnapshot)
-        })
-        .catch(() => null)
-  const presentationSnapshotPromise = options.isLiveSessionReattach
-    ? preAttachPresentationSnapshotPromise
-    : Promise.all([preAttachPresentationSnapshotPromise, initialGeometryCommitPromise]).then(
-        ([baselineSnapshot, initialGeometry]) => {
+  const initialGeometryCommitPromise = attachPromise
+    .catch(() => undefined)
+    .then(async () => {
+      const baselineSnapshot = await preAttachPresentationSnapshotPromise
+      return await options.commitInitialGeometry(baselineSnapshot)
+    })
+    .catch(() => null)
+  const presentationSnapshotPromise = Promise.all([
+    preAttachPresentationSnapshotPromise,
+    initialGeometryCommitPromise,
+  ]).then(([baselineSnapshot, initialGeometry]) => {
+    if (options.isLiveSessionReattach) {
+      if (!initialGeometry) {
+        return baselineSnapshot
+      }
+
+      return requestPresentationSnapshotAfterGeometry({
+        sessionId: options.sessionId,
+        expectedGeometry: { cols: initialGeometry.cols, rows: initialGeometry.rows },
+        maxAttempts: initialGeometry.changed === true ? 8 : 1,
+      }).then(snapshot => snapshot ?? (initialGeometry.changed === true ? null : baselineSnapshot))
+    }
+
           const baselineHasMeaningfulScreen =
             baselineSnapshot !== null &&
             containsMeaningfulTerminalDisplayContent(baselineSnapshot.serializedScreen)
@@ -422,8 +432,7 @@ export function prepareRuntimePresentationAttach(options: {
             requireMeaningfulSerializedScreen: shouldRequireFreshMeaningfulScreen,
             maxAttempts: shouldRequireFreshMeaningfulScreen ? 80 : 8,
           })
-        },
-      )
+  })
 
   return { attachPromise, presentationSnapshotPromise }
 }

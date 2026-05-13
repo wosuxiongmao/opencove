@@ -2,8 +2,10 @@ import type { Node } from '@xyflow/react'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import type { LaunchAgentSessionResult, TerminalRuntimeKind } from '@shared/contracts/dto'
 import { resolveAgentNodeMinSize } from '@contexts/workspace/domain/workspaceNodeSizing'
+import type { TerminalPtyGeometryDisplayMetrics } from '@contexts/workspace/domain/terminalPtyGeometry'
 import type { AgentNodeData, TerminalNodeData } from '../../../types'
 import { resolveAgentLaunchGeometryForFrame } from './agentLaunchGeometry'
+import { logTerminalLaunchGeometryDiagnostics } from './terminalLaunchDiagnostics'
 
 export type AgentRuntimeNode = Node<TerminalNodeData> & {
   data: TerminalNodeData & {
@@ -77,6 +79,7 @@ export async function launchAgentRuntime({
   defaultTerminalProfileId,
   executablePathOverride,
   terminalFontSize,
+  terminalDisplayMetrics,
 }: {
   node: AgentRuntimeNode
   mountId: string | null
@@ -88,11 +91,24 @@ export async function launchAgentRuntime({
   defaultTerminalProfileId: string | null
   executablePathOverride: string | null
   terminalFontSize: number
+  terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
 }): Promise<AgentRuntimeLaunchResult> {
   const frameSize = resolveAgentRuntimeLaunchFrameSize(node)
   const launchGeometry = resolveAgentLaunchGeometryForFrame({
     frameSize,
     terminalFontSize,
+    terminalDisplayMetrics,
+  })
+  logTerminalLaunchGeometryDiagnostics({
+    event: 'agent-runtime-relaunch',
+    source: 'launchAgentRuntime',
+    provider: node.data.agent.provider,
+    mode,
+    frameSize: launchGeometry.frameSize,
+    terminalGeometry: launchGeometry.terminalGeometry,
+    terminalFontSize,
+    terminalDisplayMetrics,
+    mountId,
   })
 
   if (mountId) {

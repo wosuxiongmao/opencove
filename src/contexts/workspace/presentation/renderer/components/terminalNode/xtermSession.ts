@@ -26,6 +26,7 @@ import { registerTerminalDisplayMeasurementHandle } from '@contexts/settings/pre
 
 type TerminalDiagnosticsHandle = ReturnType<typeof registerTerminalDiagnostics>
 let nextXtermSessionInstanceId = 1
+const XTERM_SCROLLBAR_GUTTER_WIDTH = 10
 
 export interface XtermSession {
   terminal: Terminal
@@ -54,6 +55,7 @@ export function createMountedXtermSession({
   cursorBlink,
   disableStdin,
   fontSize,
+  fontFamily,
   lineHeight = 1,
   letterSpacing = 0,
   bindSearchAddonToFind,
@@ -80,6 +82,7 @@ export function createMountedXtermSession({
   cursorBlink: boolean
   disableStdin: boolean
   fontSize: number
+  fontFamily: string | null
   lineHeight?: number
   letterSpacing?: number
   bindSearchAddonToFind: (addon: SearchAddon) => () => void
@@ -99,7 +102,7 @@ export function createMountedXtermSession({
   const terminal = new Terminal({
     cursorBlink,
     ...(disableStdin ? { disableStdin: true } : {}),
-    fontFamily: DEFAULT_TERMINAL_FONT_FAMILY,
+    fontFamily: fontFamily ?? DEFAULT_TERMINAL_FONT_FAMILY,
     fontSize,
     lineHeight,
     letterSpacing,
@@ -107,6 +110,7 @@ export function createMountedXtermSession({
     allowProposedApi: true,
     convertEol: true,
     scrollback: 5000,
+    overviewRuler: { width: XTERM_SCROLLBAR_GUTTER_WIDTH },
     ...(windowsPty ? { windowsPty } : {}),
     ...(initialDimensions ?? {}),
   })

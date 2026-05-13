@@ -67,27 +67,49 @@ function normalizeProcessCommandEnvironment(env: NodeJS.ProcessEnv): {
     }
   }
 
-  const currentPath = nextEnv.PATH ?? ''
+  const currentPathKey = findWindowsPathEnvKey(nextEnv)
+  const currentPath = currentPathKey ? (nextEnv[currentPathKey] ?? '') : ''
   const normalizedPath = mergeCommandPath({
     platform: process.platform,
     currentPath,
     homeDir: resolveHomeDirectory(),
     env: nextEnv,
   })
-  if (normalizedPath === currentPath) {
+  const needsCanonicalPathKey = currentPathKey !== null && currentPathKey !== 'PATH'
+  if (normalizedPath === currentPath && !needsCanonicalPathKey) {
     return {
       env: nextEnv,
       diagnostics: [],
     }
   }
 
-  nextEnv.PATH = normalizedPath
+  writeCanonicalWindowsPathEnvValue(nextEnv, normalizedPath)
+  const diagnostics: string[] = []
+  if (normalizedPath !== currentPath) {
+    diagnostics.push('Appended stable Windows command fallback directories to the current process PATH.')
+  }
+  if (needsCanonicalPathKey) {
+    diagnostics.push('Canonicalized Windows process Path key to PATH.')
+  }
   return {
     env: nextEnv,
-    diagnostics: [
-      'Appended stable Windows command fallback directories to the current process PATH.',
-    ],
+    diagnostics,
   }
+}
+
+function findWindowsPathEnvKey(env: NodeJS.ProcessEnv): string | null {
+  const pathKey = Object.keys(env).find(key => key.toLowerCase() === 'path')
+  return pathKey ?? null
+}
+
+function writeCanonicalWindowsPathEnvValue(env: NodeJS.ProcessEnv, value: string): void {
+  for (const key of Object.keys(env)) {
+    if (key.toLowerCase() === 'path' && key !== 'PATH') {
+      delete env[key]
+    }
+  }
+
+  env.PATH = value
 }
 
 function toCommandEnvironmentSnapshot(

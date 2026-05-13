@@ -124,6 +124,13 @@ export function TerminalDisplayCalibrationRow({
         cssCellHeight: activeReference.measurement.cssCellHeight,
         effectiveDpr: activeReference.measurement.effectiveDpr,
       },
+      measured: {
+        cols: result.measurement.cols,
+        rows: result.measurement.rows,
+        cssCellWidth: result.measurement.cssCellWidth,
+        cssCellHeight: result.measurement.cssCellHeight,
+        effectiveDpr: result.measurement.effectiveDpr,
+      },
       score: result.score,
       measuredAt: new Date().toISOString(),
     }

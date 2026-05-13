@@ -7,6 +7,7 @@ import {
   getCachedTerminalScreenState,
   isCachedTerminalScreenStateInvalidated,
 } from './screenStateCache'
+import { createTerminalDomTextOverhangGeometryCommitScheduler } from './syncTerminalNodeSize'
 import { resolveAttachablePtyApi } from './attachablePty'
 import { cacheTerminalScreenStateOnUnmount } from './cacheTerminalScreenState'
 import { MAX_SCROLLBACK_CHARS } from './constants'
@@ -26,6 +27,7 @@ import {
   createRuntimeInitialGeometryCommitter,
   resolveRuntimeHydrationBaselineSource,
   resolveRuntimeInitialTerminalDimensions,
+  shouldPreferMeasuredInitialGeometryCommit,
 } from './useTerminalRuntimeSession.initialGeometry'
 import {
   createOptionalOpenCodeThemeBridge,
@@ -86,6 +88,8 @@ export function useTerminalRuntimeSession({
   cancelWebglCanvasTransformCleanup,
   setRendererKindAndApply,
   terminalFontSize,
+  terminalFontFamily,
+  displayTerminalMetricsRef,
   viewportZoomRef,
   preferredRendererMode,
   terminalClientResetVersion,
@@ -136,35 +140,77 @@ export function useTerminalRuntimeSession({
     const hasPreservedVisibleBaseline = canReusePreservedSession && preservedSession !== null
     const session =
       (canReusePreservedSession ? preservedSession : null) ??
-      createMountedXtermSession({
-        nodeId,
-        ownerId: `${nodeId}:${sessionId}`,
-        sessionIdForDiagnostics: sessionId,
-        nodeKindForDiagnostics: kind === 'agent' ? 'agent' : 'terminal',
-        titleForDiagnostics: titleRef.current,
-        terminalProvider,
-        terminalThemeMode,
-        isTestEnvironment,
-        container: containerRef.current,
-        initialDimensions,
-        windowsPty,
-        cursorBlink: true,
-        disableStdin: false,
-        fontSize: terminalFontSize,
-        bindSearchAddonToFind,
-        syncTerminalSize,
-        diagnosticsEnabled,
-        logTerminalDiagnostics,
-        initialViewportZoom: viewportZoomRef.current,
-        preferredRendererMode,
-        onRendererIssue: issue => {
-          requestTerminalRendererRecovery({
-            ...issue,
-            trigger: 'context_loss',
+      (() => {
+        const displayTerminalMetrics = displayTerminalMetricsRef.current
+        if (diagnosticsEnabled) {
+          const rect = containerRef.current?.getBoundingClientRect()
+          logTerminalDiagnostics({
+            source: 'renderer-terminal',
+            nodeId,
+            sessionId,
+            nodeKind: kind === 'agent' ? 'agent' : 'terminal',
+            title: titleRef.current,
+            event: 'xterm-session-create-request',
+            snapshot: {
+              bufferKind: 'unknown',
+              activeBaseY: null,
+              activeViewportY: null,
+              activeLength: null,
+              cols: initialDimensions?.cols ?? 0,
+              rows: initialDimensions?.rows ?? 0,
+              viewportScrollTop: null,
+              viewportScrollHeight: null,
+              viewportClientHeight: null,
+              hasViewport: false,
+              hasVerticalScrollbar: false,
+              containerRectWidth: rect?.width ?? null,
+              containerRectHeight: rect?.height ?? null,
+            },
+            details: {
+              initialCols: initialDimensions?.cols ?? null,
+              initialRows: initialDimensions?.rows ?? null,
+              terminalFontSize,
+              displayFontSize: displayTerminalMetrics.fontSize,
+              displayLineHeight: displayTerminalMetrics.lineHeight,
+              displayLetterSpacing: displayTerminalMetrics.letterSpacing ?? null,
+              isLiveSessionReattach,
+              canReusePreservedSession,
+            },
           })
-        },
-        scheduleWebglCanvasTransformCleanup,
-      })
+        }
+        return createMountedXtermSession({
+          nodeId,
+          ownerId: `${nodeId}:${sessionId}`,
+          sessionIdForDiagnostics: sessionId,
+          nodeKindForDiagnostics: kind === 'agent' ? 'agent' : 'terminal',
+          titleForDiagnostics: titleRef.current,
+          terminalProvider,
+          terminalThemeMode,
+          isTestEnvironment,
+          container: containerRef.current,
+          initialDimensions,
+          windowsPty,
+          cursorBlink: true,
+          disableStdin: false,
+          fontSize: displayTerminalMetrics.fontSize,
+          fontFamily: terminalFontFamily,
+          lineHeight: displayTerminalMetrics.lineHeight,
+          letterSpacing: displayTerminalMetrics.letterSpacing,
+          bindSearchAddonToFind,
+          syncTerminalSize,
+          diagnosticsEnabled,
+          logTerminalDiagnostics,
+          initialViewportZoom: viewportZoomRef.current,
+          preferredRendererMode,
+          onRendererIssue: issue => {
+            requestTerminalRendererRecovery({
+              ...issue,
+              trigger: 'context_loss',
+            })
+          },
+          scheduleWebglCanvasTransformCleanup,
+        })
+      })()
     if (preservedSession && !canReusePreservedSession) {
       preservedSession.dispose()
     }
@@ -283,8 +329,12 @@ export function useTerminalRuntimeSession({
         sessionId,
         canonicalInitialGeometry: initialTerminalGeometryRef.current,
         allowMeasuredResizeCommit: true,
-        preferMeasuredGeometryCommit:
-          kind === 'agent' && terminalProvider === 'opencode' && !isLiveSessionReattach,
+        preferMeasuredGeometryCommit: shouldPreferMeasuredInitialGeometryCommit({
+          kind,
+          isLiveSessionReattach,
+          canonicalInitialGeometry: initialTerminalGeometryRef.current,
+          suppressPtyResize: suppressPtyResizeRef.current,
+        }),
       }),
       requirePostGeometrySnapshotOutput: shouldRequirePostGeometrySnapshotOutput({
         kind,
@@ -298,6 +348,16 @@ export function useTerminalRuntimeSession({
       sessionId,
       terminal,
     })
+    const domTextOverhangGeometryCommitScheduler =
+      createTerminalDomTextOverhangGeometryCommitScheduler({
+        terminalRef,
+        fitAddonRef,
+        containerRef,
+        isPointerResizingRef,
+        lastCommittedPtySizeRef,
+        suppressPtyResizeRef,
+        sessionId,
+      })
     const outputScheduler = createTerminalOutputScheduler({
       terminal,
       scrollbackBuffer,
@@ -307,6 +367,7 @@ export function useTerminalRuntimeSession({
         committedScreenStateRecorder.record(committedScrollbackBuffer.snapshot())
         scheduleTranscriptSync()
         restoredAgentVisibilityGate.notifyWriteCommitted(data)
+        domTextOverhangGeometryCommitScheduler.schedule()
       },
     })
     outputSchedulerRef.current = outputScheduler
@@ -339,6 +400,7 @@ export function useTerminalRuntimeSession({
       syncTerminalSize,
       onReplayWriteCommitted: () => {
         restoredAgentVisibilityGate.notifyReplayWriteCommitted()
+        domTextOverhangGeometryCommitScheduler.schedule()
       },
       onRevealed: restoredAgentVisibilityGate.revealAfterHydration,
       isDisposed: () => isDisposed,
@@ -386,6 +448,12 @@ export function useTerminalRuntimeSession({
       shouldGateInitialUserInput,
       shouldAwaitAgentVisibleOutput,
       isDisposed: () => isDisposed,
+      onHydrated: () => {
+        domTextOverhangGeometryCommitScheduler.schedule()
+      },
+      onPresentationSnapshotGeometryApplied: () => {
+        domTextOverhangGeometryCommitScheduler.schedule()
+      },
     })
     const disposeRuntimeRendererAndThemeSync = registerRuntimeRendererAndThemeSync({
       terminal,
@@ -424,6 +492,7 @@ export function useTerminalRuntimeSession({
       disposeInteractionWindow()
       unsubscribeRuntimeEvents()
       restoredAgentVisibilityGate.dispose()
+      domTextOverhangGeometryCommitScheduler.dispose()
       outputScheduler.dispose()
       outputSchedulerRef.current = null
       disposeRuntimeTestHandles()
@@ -485,6 +554,8 @@ export function useTerminalRuntimeSession({
     recoveryScrollStateRef,
     isLiveSessionReattach,
     terminalFontSize,
+    terminalFontFamily,
+    displayTerminalMetricsRef,
     viewportZoomRef,
     preferredRendererMode,
     terminalClientResetVersion,

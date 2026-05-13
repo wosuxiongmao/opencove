@@ -5,6 +5,7 @@ import type { CachedTerminalScreenState } from './screenStateCache'
 import type { TerminalHydrationBaselineSource } from './useTerminalRuntimeSession.support'
 import {
   captureTerminalScrollState,
+  resizeTerminalPreservingScrollState,
   type TerminalScrollStateSnapshot,
 } from './effectiveDevicePixelRatio'
 import { writeTerminalAsync } from './writeTerminal'
@@ -83,7 +84,7 @@ function applyPresentationSnapshotGeometry(
   const nextCols = Math.max(1, snapshot.cols)
   const nextRows = Math.max(1, snapshot.rows)
   if (terminal.cols !== nextCols || terminal.rows !== nextRows) {
-    terminal.resize(nextCols, nextRows)
+    resizeTerminalPreservingScrollState(terminal, nextCols, nextRows)
   }
 }
 
@@ -103,6 +104,7 @@ export async function hydrateTerminalFromSnapshot({
   onHydratedWriteCommitted,
   onHydrationBaselineResolved,
   onPresentationSnapshotAccepted,
+  onPresentationSnapshotGeometryApplied,
   finalizeHydration,
 }: {
   attachPromise: Promise<void | undefined>
@@ -120,6 +122,7 @@ export async function hydrateTerminalFromSnapshot({
   onHydratedWriteCommitted: (rawSnapshot: string) => void
   onHydrationBaselineResolved?: (source: TerminalHydrationBaselineSource) => void
   onPresentationSnapshotAccepted?: (snapshot: PresentationSnapshotTerminalResult) => void
+  onPresentationSnapshotGeometryApplied?: () => void
   finalizeHydration: (
     rawSnapshot: string,
     options?: {
@@ -158,6 +161,7 @@ export async function hydrateTerminalFromSnapshot({
   const hasPresentationSnapshotPayload = (presentationSnapshot?.serializedScreen.length ?? 0) > 0
 
   applyPresentationSnapshotGeometry(terminal, presentationSnapshot)
+  onPresentationSnapshotGeometryApplied?.()
 
   if (visiblePresentationSnapshot) {
     await writeTerminalAsync(terminal, visiblePresentationSnapshot.serializedScreen)

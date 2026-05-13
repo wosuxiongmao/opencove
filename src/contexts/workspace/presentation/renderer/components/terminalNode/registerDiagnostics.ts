@@ -4,6 +4,7 @@ import type { TerminalThemeMode } from './theme'
 import {
   captureTerminalDiagnosticsSnapshot,
   captureTerminalInteractionDetails,
+  captureTerminalLayoutDiagnostics,
   createTerminalDiagnosticsLogger,
 } from './diagnostics'
 
@@ -63,6 +64,7 @@ export function registerTerminalDiagnostics({
     windowsPtyBackend: windowsPty?.backend ?? null,
     windowsPtyBuild: windowsPty?.buildNumber ?? null,
     terminalThemeMode,
+    ...captureTerminalLayoutDiagnostics({ terminal, container }),
     ...collectInteractionDetails(),
   })
 
@@ -78,6 +80,7 @@ export function registerTerminalDiagnostics({
           diagnostics.log('resize', captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
             cols: size.cols,
             rows: size.rows,
+            ...captureTerminalLayoutDiagnostics({ terminal, container }),
           })
         })
       : { dispose: () => undefined }
@@ -110,9 +113,10 @@ export function registerTerminalDiagnostics({
       : null
 
   const logInteractionEvent = (event: string, point?: { x: number; y: number } | null): void => {
-    diagnostics.log(event, captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
-      ...collectInteractionDetails(point),
-    })
+      diagnostics.log(event, captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
+        ...captureTerminalLayoutDiagnostics({ terminal, container }),
+        ...collectInteractionDetails(point),
+      })
   }
 
   const logInteractionEventWithDetails = (
@@ -120,10 +124,11 @@ export function registerTerminalDiagnostics({
     details: TerminalDiagnosticsLogInput['details'],
     point?: { x: number; y: number } | null,
   ): void => {
-    diagnostics.log(event, captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
-      ...collectInteractionDetails(point),
-      ...details,
-    })
+      diagnostics.log(event, captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
+        ...captureTerminalLayoutDiagnostics({ terminal, container }),
+        ...collectInteractionDetails(point),
+        ...details,
+      })
   }
 
   const mutationObserver =
@@ -295,12 +300,14 @@ export function registerTerminalDiagnostics({
   return {
     log: (event, details) => {
       diagnostics.log(event, captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
+        ...captureTerminalLayoutDiagnostics({ terminal, container }),
         ...collectInteractionDetails(),
         ...(details ? details : {}),
       })
     },
     logHydrated: ({ rawSnapshotLength, bufferedExitCode }) => {
       diagnostics.log('hydrated', captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
+        ...captureTerminalLayoutDiagnostics({ terminal, container }),
         rawSnapshotLength,
         bufferedExitCode,
       })

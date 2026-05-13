@@ -10,3 +10,12 @@
 .terminal-node__terminal .xterm-screen {
   overflow: hidden;
 }
+
+.terminal-node__terminal[data-cove-terminal-renderer='dom'] .xterm-screen {
+  overflow: visible;
+}
+
+/* xterm's DOM renderer sets row overflow inline; keep fallback CJK glyphs visible. */
+.terminal-node__terminal[data-cove-terminal-renderer='dom'] .xterm-rows > div {
+  overflow: visible !important;
+}

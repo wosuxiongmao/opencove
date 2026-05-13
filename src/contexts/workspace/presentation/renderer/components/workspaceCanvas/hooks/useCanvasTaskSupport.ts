@@ -16,6 +16,7 @@ export function useWorkspaceCanvasTaskSupport({
   environmentVariables,
   onRequestPersistFlush,
   actionRefs,
+  terminalDisplayMetrics,
 }: {
   agentTaskTagOptions: Parameters<typeof useWorkspaceCanvasTaskTagOptions>[0]
   nodesRef: Parameters<typeof useWorkspaceCanvasTaskActions>[0]['nodesRef']
@@ -32,6 +33,9 @@ export function useWorkspaceCanvasTaskSupport({
   onRequestPersistFlush?: Parameters<
     typeof useWorkspaceCanvasTaskActions
   >[0]['onRequestPersistFlush']
+  terminalDisplayMetrics: Parameters<
+    typeof useWorkspaceCanvasTaskActions
+  >[0]['terminalDisplayMetrics']
   actionRefs: {
     runTaskAgentRef: Parameters<typeof useWorkspaceCanvasTaskActions>[0]['runTaskAgentRef']
     resumeTaskAgentSessionRef: Parameters<
@@ -67,6 +71,7 @@ export function useWorkspaceCanvasTaskSupport({
     environmentVariables,
     taskTagOptions,
     onRequestPersistFlush,
+    terminalDisplayMetrics,
     runTaskAgentRef: actionRefs.runTaskAgentRef,
     resumeTaskAgentSessionRef: actionRefs.resumeTaskAgentSessionRef,
     removeTaskAgentSessionRecordRef: actionRefs.removeTaskAgentSessionRecordRef,

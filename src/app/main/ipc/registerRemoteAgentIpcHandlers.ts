@@ -25,6 +25,11 @@ import { invokeControlSurface } from '../controlSurface/remote/controlSurfaceHtt
 import type { PtyRuntime } from '../../../contexts/terminal/presentation/main-ipc/runtime'
 import { isRemotePtyRuntime } from '../controlSurface/remote/remotePtyRuntime'
 import { AGENT_PROVIDERS } from '../../../contexts/settings/domain/agentSettings.providers'
+import {
+  describeAgentLaunchError,
+  logAgentLaunchError,
+  logAgentLaunchInfo,
+} from '../diagnostics/agentLaunchRuntimeDiagnostics'
 
 function normalizeRequiredString(value: unknown, debugName: string): string {
   if (typeof value !== 'string') {
@@ -265,9 +270,46 @@ export function registerRemoteAgentIpcHandlers(options: {
         typeof payload?.resumeSessionId === 'string' && payload.resumeSessionId.trim().length > 0
           ? payload.resumeSessionId.trim()
           : null
+      const executablePathOverride =
+        typeof payload?.executablePathOverride === 'string' &&
+        payload.executablePathOverride.trim().length > 0
+          ? payload.executablePathOverride.trim()
+          : null
+      const cols =
+        typeof payload?.cols === 'number' && Number.isFinite(payload.cols) && payload.cols > 0
+          ? Math.floor(payload.cols)
+          : null
+      const rows =
+        typeof payload?.rows === 'number' && Number.isFinite(payload.rows) && payload.rows > 0
+          ? Math.floor(payload.rows)
+          : null
+      logAgentLaunchInfo('remote-ipc-received', 'Remote agent IPC received agent.launch.', {
+        provider,
+        mode,
+        cwd,
+        modelPresent: !!model,
+        promptLength: typeof payload?.prompt === 'string' ? payload.prompt.length : 0,
+        resumeSessionIdPresent: !!resumeSessionId,
+        executablePathOverridePresent: !!executablePathOverride,
+        agentFullAccess:
+          typeof payload?.agentFullAccess === 'boolean' ? payload.agentFullAccess : null,
+        cols,
+        rows,
+      })
 
       await waitForStartupApproval()
       const endpoint = await resolveWorkerEndpoint(options.endpointResolver)
+      logAgentLaunchInfo(
+        'remote-ipc-endpoint-resolved',
+        'Remote agent IPC resolved worker endpoint.',
+        {
+          provider,
+          mode,
+          cwd,
+          endpointHost: endpoint.hostname,
+          endpointPort: endpoint.port,
+        },
+      )
 
       const launched = await invokeOk<{
         sessionId: string
@@ -290,8 +332,31 @@ export function registerRemoteAgentIpcHandlers(options: {
           model,
           resumeSessionId,
           env: payload?.env ?? null,
+          ...(executablePathOverride ? { executablePathOverride } : {}),
           agentFullAccess: payload?.agentFullAccess ?? null,
+          ...(cols ? { cols } : {}),
+          ...(rows ? { rows } : {}),
         },
+      }).catch(error => {
+        logAgentLaunchError('remote-ipc-launch-failed', 'Worker agent.launch failed.', {
+          provider,
+          mode,
+          cwd,
+          endpointHost: endpoint.hostname,
+          endpointPort: endpoint.port,
+          ...describeAgentLaunchError(error),
+        })
+        throw error
+      })
+      logAgentLaunchInfo('remote-ipc-launch-succeeded', 'Worker agent.launch succeeded.', {
+        provider: launched.provider,
+        mode,
+        cwd,
+        sessionId: launched.sessionId,
+        command: launched.command,
+        argCount: launched.args.length,
+        runtimeKind: launched.runtimeKind ?? null,
+        profileId: launched.profileId ?? null,
       })
 
       noteControlledSession(launched.sessionId)

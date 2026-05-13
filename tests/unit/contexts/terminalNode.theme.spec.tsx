@@ -329,4 +329,36 @@ describe('TerminalNode theme behavior', () => {
       })
     })
   })
+
+  it('keeps xterm fit from reserving hidden scrollbar columns', async () => {
+    installResizeObserverMock()
+    installPtyApiMock()
+
+    const { TerminalNode } =
+      await import('../../../src/contexts/workspace/presentation/renderer/components/TerminalNode')
+
+    render(
+      <TerminalNode
+        nodeId="node-fit-gutter"
+        sessionId="session-fit-gutter"
+        title="fit gutter"
+        kind="terminal"
+        status={null}
+        lastError={null}
+        position={{ x: 0, y: 0 }}
+        width={520}
+        height={360}
+        terminalFontSize={13}
+        scrollback={null}
+        onClose={() => undefined}
+        onResize={() => undefined}
+      />,
+    )
+
+    const { __getLastTerminal } = await import('@xterm/xterm')
+    await waitFor(() => {
+      expect(__getLastTerminal()?.options.scrollback).toBeGreaterThan(0)
+      expect(__getLastTerminal()?.options.overviewRuler).toEqual({ width: 10 })
+    })
+  })
 })

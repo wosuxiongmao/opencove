@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  createTerminalDisplayCalibrationSignature,
   createTerminalDisplayProfileKey,
   isTerminalDisplayCalibrationForReference,
   isTerminalDisplayReferenceForProfile,
@@ -30,6 +31,58 @@ function emitCalibrationChange(): void {
   }
 
   window.dispatchEvent(new Event(CHANGE_EVENT))
+}
+
+export interface TerminalClientDisplayCalibrationInspection {
+  profileKey: string
+  rawCalibrationPresent: boolean
+  calibrationPresent: boolean
+  profileMatches: boolean
+  referencePresent: boolean
+  referenceMatchesProfile: boolean
+  calibrationMatchesReference: boolean
+  applicableCalibrationPresent: boolean
+  calibrationFontSize: number | null
+  calibrationLineHeight: number | null
+  calibrationLetterSpacing: number | null
+  calibrationScore: number | null
+}
+
+export function inspectTerminalClientDisplayCalibration({
+  terminalFontSize,
+  terminalFontFamily,
+  terminalDisplayReference,
+}: {
+  terminalFontSize: number
+  terminalFontFamily: string | null
+  terminalDisplayReference: TerminalDisplayReference | null
+}): TerminalClientDisplayCalibrationInspection {
+  const calibration = readStorageValue()
+  const profileKey = createTerminalDisplayProfileKey({ terminalFontSize, terminalFontFamily })
+  const profileMatches = calibration?.profileKey === profileKey
+  const referenceMatchesProfile = isTerminalDisplayReferenceForProfile(terminalDisplayReference, {
+    terminalFontSize,
+    terminalFontFamily,
+  })
+  const calibrationMatchesReference =
+    profileMatches &&
+    referenceMatchesProfile &&
+    isTerminalDisplayCalibrationForReference(calibration, terminalDisplayReference)
+
+  return {
+    profileKey,
+    rawCalibrationPresent: window.localStorage.getItem(STORAGE_KEY) !== null,
+    calibrationPresent: calibration !== null,
+    profileMatches,
+    referencePresent: terminalDisplayReference !== null,
+    referenceMatchesProfile,
+    calibrationMatchesReference,
+    applicableCalibrationPresent: calibrationMatchesReference,
+    calibrationFontSize: calibration?.fontSize ?? null,
+    calibrationLineHeight: calibration?.lineHeight ?? null,
+    calibrationLetterSpacing: calibration?.letterSpacing ?? null,
+    calibrationScore: calibration?.score ?? null,
+  }
 }
 
 export function readTerminalClientDisplayCalibration({
@@ -90,6 +143,10 @@ export function useTerminalClientDisplayCalibration({
     () => createTerminalDisplayProfileKey({ terminalFontSize, terminalFontFamily }),
     [terminalFontFamily, terminalFontSize],
   )
+  const referenceSignature = useMemo(
+    () => JSON.stringify(terminalDisplayReference ?? null),
+    [terminalDisplayReference],
+  )
   const [calibration, setCalibration] = useState(() =>
     readTerminalClientDisplayCalibration({
       terminalFontSize,
@@ -100,13 +157,18 @@ export function useTerminalClientDisplayCalibration({
 
   useEffect(() => {
     const refresh = (): void => {
-      setCalibration(
-        readTerminalClientDisplayCalibration({
+      setCalibration(current => {
+        const next = readTerminalClientDisplayCalibration({
           terminalFontSize,
           terminalFontFamily,
           terminalDisplayReference,
-        }),
-      )
+        })
+
+        return createTerminalDisplayCalibrationSignature(current) ===
+          createTerminalDisplayCalibrationSignature(next)
+          ? current
+          : next
+      })
     }
     refresh()
     window.addEventListener(CHANGE_EVENT, refresh)
@@ -115,7 +177,7 @@ export function useTerminalClientDisplayCalibration({
       window.removeEventListener(CHANGE_EVENT, refresh)
       window.removeEventListener('storage', refresh)
     }
-  }, [profileKey, terminalDisplayReference, terminalFontFamily, terminalFontSize])
+  }, [profileKey, referenceSignature, terminalDisplayReference, terminalFontFamily, terminalFontSize])
 
   return calibration
 }

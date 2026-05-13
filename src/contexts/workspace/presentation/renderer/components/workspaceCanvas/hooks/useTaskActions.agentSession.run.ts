@@ -170,6 +170,7 @@ export async function runTaskAgentAction(
     bucket: context.agentSettings.standardWindowSizeBucket,
     provider,
     terminalFontSize: context.agentSettings.terminalFontSize,
+    terminalDisplayMetrics: context.terminalDisplayMetrics,
   })
   const mergedEnv = buildMergedAgentLaunchEnv(
     context.agentSettings,

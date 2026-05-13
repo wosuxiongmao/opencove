@@ -92,4 +92,21 @@ describe('local worker manager spawn args', () => {
 
     expect(args).toContain('--disable-web-ui')
   })
+
+  it('normalizes diagnostics flags forwarded to local worker processes', async () => {
+    vi.resetModules()
+    const { resolveForwardedLocalWorkerDiagnosticsEnv } =
+      await import('../../../src/app/main/worker/localWorkerManager')
+
+    expect(
+      resolveForwardedLocalWorkerDiagnosticsEnv({
+        OPENCOVE_AGENT_LAUNCH_DIAGNOSTICS: 'true',
+        OPENCOVE_TERMINAL_DIAGNOSTICS: '1',
+        OPENCOVE_TERMINAL_INPUT_DIAGNOSTICS: '0',
+      }),
+    ).toEqual({
+      OPENCOVE_AGENT_LAUNCH_DIAGNOSTICS: '1',
+      OPENCOVE_TERMINAL_DIAGNOSTICS: '1',
+    })
+  })
 })

@@ -67,6 +67,14 @@ export interface TerminalRuntimeSessionOptions {
   cancelWebglCanvasTransformCleanup: () => void
   setRendererKindAndApply: (kind: TerminalRendererKind) => void
   terminalFontSize: number
+  terminalFontFamily: string | null
+  displayTerminalMetricsRef: {
+    current: {
+      fontSize: number
+      lineHeight: number
+      letterSpacing: number
+    }
+  }
   viewportZoomRef: { current: number }
   preferredRendererMode: PreferredTerminalRendererMode
   terminalClientResetVersion: number

@@ -114,4 +114,65 @@ describe('registerRemoteAgentIpcHandlers', () => {
       },
     )
   })
+
+  it('forwards launch override and geometry to the worker agent launch command', async () => {
+    const { handlers, ipcMain } = createIpcHarness()
+    const invokeControlSurface = vi.fn(async () => ({
+      httpStatus: 200,
+      result: {
+        ok: true,
+        value: {
+          sessionId: 'session-override',
+          provider: 'codex',
+          startedAt: '2026-04-30T00:00:00.000Z',
+          profileId: null,
+          runtimeKind: 'windows',
+          resumeSessionId: null,
+          effectiveModel: 'gpt-5.2-codex',
+          command: 'codex',
+          args: ['run'],
+        },
+      },
+    }))
+
+    vi.doMock('electron', () => ({ ipcMain }))
+    vi.doMock('../../../src/app/main/controlSurface/remote/controlSurfaceHttpClient', () => ({
+      invokeControlSurface,
+    }))
+
+    const { registerRemoteAgentIpcHandlers } =
+      await import('../../../src/app/main/ipc/registerRemoteAgentIpcHandlers')
+
+    registerRemoteAgentIpcHandlers({
+      endpointResolver: async () => ({
+        hostname: '127.0.0.1',
+        port: 7777,
+        token: 'token',
+      }),
+      ptyRuntime: {} as never,
+    })
+
+    const launchHandler = handlers.get(IPC_CHANNELS.agentLaunch)
+    expect(launchHandler).toBeTypeOf('function')
+
+    await invokeHandledIpc(launchHandler, null, {
+      provider: 'codex',
+      cwd: '/tmp/persisted-workspace',
+      prompt: 'hello',
+      executablePathOverride: '/opt/bin/codex',
+      cols: 132,
+      rows: 41,
+    })
+
+    expect(invokeControlSurface).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          executablePathOverride: '/opt/bin/codex',
+          cols: 132,
+          rows: 41,
+        }),
+      }),
+    )
+  })
 })

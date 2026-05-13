@@ -43,5 +43,9 @@ export { useWorkspaceCanvasTaskActions } from './useTaskActions'
 export { useWorkspaceCanvasTaskSupport } from './useCanvasTaskSupport'
 export { useWorkspaceCanvasTaskTagOptions } from './useTaskTagOptions'
 export { useWorkspaceCanvasTaskUi } from './useCanvasTaskUi'
+export {
+  resolveTerminalDisplayMetrics,
+  useResolvedTerminalDisplayCalibration,
+} from './useTerminalDisplayMetrics'
 export { useWorkspaceCanvasTrackpadGestures } from './useTrackpadGestures'
 export { useWorkspaceCanvasWorkspaceReset } from './useCanvasWorkspaceReset'

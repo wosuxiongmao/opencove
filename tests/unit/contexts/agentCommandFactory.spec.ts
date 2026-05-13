@@ -54,13 +54,40 @@ describe('buildAgentLaunchCommand', () => {
 
     expect(command.command).toBe('codex')
     expect(command.args).toEqual([
-      '--full-auto',
+      '--sandbox',
+      'workspace-write',
+      '--ask-for-approval',
+      'on-request',
       '--model',
       'gpt-5.2-codex',
       '--',
       '- implement login flow',
     ])
     expect(command.launchMode).toBe('new')
+  })
+
+  it('builds codex resume command in safe mode with supported sandbox options', () => {
+    const command = buildAgentLaunchCommand({
+      provider: 'codex',
+      mode: 'resume',
+      prompt: '',
+      model: 'gpt-5.2-codex',
+      resumeSessionId: '019c3e32-52ff-7b00-94ac-e6c5a56b4aa4',
+      agentFullAccess: false,
+    })
+
+    expect(command.command).toBe('codex')
+    expect(command.args).toEqual([
+      '--sandbox',
+      'workspace-write',
+      '--ask-for-approval',
+      'on-request',
+      'resume',
+      '019c3e32-52ff-7b00-94ac-e6c5a56b4aa4',
+      '--model',
+      'gpt-5.2-codex',
+    ])
+    expect(command.launchMode).toBe('resume')
   })
 
   it('builds claude command without model override', () => {

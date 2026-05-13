@@ -31,6 +31,8 @@ export function startRuntimeTerminalHydration({
   hydrationRouter,
   scrollStateToRestore,
   onScrollStateRestored,
+  onHydrated,
+  onPresentationSnapshotGeometryApplied,
   shouldGateInitialUserInput,
   shouldAwaitAgentVisibleOutput,
   isDisposed,
@@ -53,6 +55,8 @@ export function startRuntimeTerminalHydration({
   hydrationRouter: TerminalHydrationRouter
   scrollStateToRestore: TerminalScrollStateSnapshot | null
   onScrollStateRestored?: () => void
+  onHydrated?: () => void
+  onPresentationSnapshotGeometryApplied?: () => void
   shouldGateInitialUserInput: boolean
   shouldAwaitAgentVisibleOutput: boolean
   isDisposed: () => boolean
@@ -78,6 +82,7 @@ export function startRuntimeTerminalHydration({
     onHydrationBaselineResolved: source => {
       hydrationBaselineSourceRef.current = source
     },
+    onPresentationSnapshotGeometryApplied,
     onPresentationSnapshotAccepted: snapshot => {
       lastCommittedPtySizeRef.current = {
         cols: snapshot.cols,
@@ -93,6 +98,7 @@ export function startRuntimeTerminalHydration({
         restoreTerminalScrollState(terminal, options.scrollStateToRestore)
       }
       onScrollStateRestored?.()
+      onHydrated?.()
       if (shouldGateInitialUserInput) {
         if (shouldAwaitAgentVisibleOutput) {
           return

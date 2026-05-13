@@ -43,6 +43,12 @@ import {
 import type { SessionRecord } from './sessionRecords'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRuntime'
+import {
+  describeAgentLaunchCommand,
+  describeAgentLaunchError,
+  logAgentLaunchError,
+  logAgentLaunchInfo,
+} from '../../diagnostics/agentLaunchRuntimeDiagnostics'
 
 const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
 
@@ -211,6 +217,22 @@ export function registerSessionHandlers(
       const resolvedCwd = typeof payload.cwd === 'string' ? payload.cwd.trim() : ''
       const mode = payload.mode === 'resume' ? 'resume' : 'new'
       const resumeSessionId = normalizeOptionalString(payload.resumeSessionId)
+      logAgentLaunchInfo(
+        'control-surface-received',
+        'Control surface received session.launchAgent.',
+        {
+          provider: payload.provider ?? null,
+          mode,
+          hasSpaceId: resolvedSpaceId.length > 0,
+          cwd: resolvedCwd.length > 0 ? resolvedCwd : null,
+          promptLength: payload.prompt.length,
+          resumeSessionIdPresent: !!resumeSessionId,
+          executablePathOverridePresent: !!payload.executablePathOverride,
+          agentFullAccess: payload.agentFullAccess ?? null,
+          cols: payload.cols ?? null,
+          rows: payload.rows ?? null,
+        },
+      )
 
       const resolvedSpace = resolvedSpaceId
         ? await resolveSpaceWorkingDirectoryFromStore({
@@ -311,6 +333,16 @@ export function registerSessionHandlers(
         payload.executablePathOverride ??
         resolveAgentExecutablePathOverride(agentSettings, provider)
       const agentFullAccess = payload.agentFullAccess ?? agentSettings.agentFullAccess
+      logAgentLaunchInfo('control-surface-resolved-settings', 'Resolved agent launch settings.', {
+        provider,
+        mode,
+        cwd: workingDirectory,
+        modelPresent: !!model,
+        executablePathOverridePresent: !!executablePathOverride,
+        agentFullAccess,
+        cols: payload.cols ?? 80,
+        rows: payload.rows ?? 24,
+      })
 
       const testStub = resolveWorkerAgentTestStub({
         provider,
@@ -339,6 +371,18 @@ export function registerSessionHandlers(
             agentFullAccess,
             opencodeServer,
           })
+      logAgentLaunchInfo(
+        'control-surface-command-built',
+        'Built agent launch command before spawn resolution.',
+        describeAgentLaunchCommand({
+          provider,
+          mode,
+          cwd: workingDirectory,
+          command: launchCommand.command,
+          args: launchCommand.args,
+          executablePathOverride,
+        }),
+      )
 
       const startedAtMs = Date.now()
       const startedAt = new Date(startedAtMs).toISOString()
@@ -372,19 +416,72 @@ export function registerSessionHandlers(
         provider: testStub ? null : provider,
         executablePathOverride,
         ...(mergedEnv ? { env: mergedEnv } : {}),
+      }).catch(error => {
+        logAgentLaunchError('control-surface-spawn-resolve-failed', 'Failed to resolve spawn.', {
+          provider,
+          mode,
+          cwd: workingDirectory,
+          ...describeAgentLaunchError(error),
+        })
+        throw error
       })
+      logAgentLaunchInfo(
+        'control-surface-spawn-resolved',
+        'Resolved agent spawn command.',
+        describeAgentLaunchCommand({
+          provider,
+          mode,
+          cwd: resolvedSpawn.cwd,
+          command: resolvedSpawn.command,
+          args: resolvedSpawn.args,
+          executablePathOverride,
+          env: resolvedSpawn.env,
+        }),
+      )
       const geminiDiscoveryCursor =
         provider === 'gemini' && mode === 'new' && !resumeSessionId
           ? await captureGeminiSessionDiscoveryCursor(workingDirectory).catch(() => null)
           : undefined
 
-      const { sessionId } = await deps.ptyRuntime.spawnSession({
+      const spawnCols = payload.cols ?? 80
+      const spawnRows = payload.rows ?? 24
+      logAgentLaunchInfo('control-surface-pty-spawn-start', 'Spawning agent PTY session.', {
+        provider,
+        mode,
         cwd: resolvedSpawn.cwd,
-        cols: payload.cols ?? 80,
-        rows: payload.rows ?? 24,
+        cols: spawnCols,
+        rows: spawnRows,
         command: resolvedSpawn.command,
-        args: resolvedSpawn.args,
-        ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
+        argCount: resolvedSpawn.args.length,
+      })
+      const { sessionId } = await deps.ptyRuntime
+        .spawnSession({
+          cwd: resolvedSpawn.cwd,
+          cols: spawnCols,
+          rows: spawnRows,
+          command: resolvedSpawn.command,
+          args: resolvedSpawn.args,
+          ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
+        })
+        .catch(error => {
+          logAgentLaunchError('control-surface-pty-spawn-failed', 'PTY spawn failed.', {
+            provider,
+            mode,
+            cwd: resolvedSpawn.cwd,
+            cols: spawnCols,
+            rows: spawnRows,
+            command: resolvedSpawn.command,
+            ...describeAgentLaunchError(error),
+          })
+          throw error
+        })
+      logAgentLaunchInfo('control-surface-pty-spawn-succeeded', 'Agent PTY session spawned.', {
+        provider,
+        mode,
+        cwd: resolvedSpawn.cwd,
+        sessionId,
+        cols: spawnCols,
+        rows: spawnRows,
       })
 
       startAgentSessionStateWatcherIfEnabled({

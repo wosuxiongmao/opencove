@@ -81,6 +81,7 @@ type TerminalSelectionTestApi = {
   getRegisteredNodeIds: () => string[]
   getRuntimeSessionId: (nodeId: string) => string | null
   getViewportY: (nodeId: string) => number | null
+  scrollToLine: (nodeId: string, line: number) => boolean
   setDisplayOptions: (
     nodeId: string,
     options: { fontSize?: number; lineHeight?: number; letterSpacing?: number },
@@ -335,6 +336,20 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         }
         const viewportY = terminal?.buffer?.active?.viewportY
         return typeof viewportY === 'number' && Number.isFinite(viewportY) ? viewportY : null
+      },
+      scrollToLine: (nodeId, line) => {
+        const terminal = terminalHandles.get(nodeId) as unknown as
+          | (TerminalSelectionHandle & {
+              scrollToLine?: (line: number) => void
+            })
+          | undefined
+        if (!terminal || typeof terminal.scrollToLine !== 'function') {
+          return false
+        }
+
+        const nextLine = Math.max(0, Math.floor(line))
+        terminal.scrollToLine(nextLine)
+        return true
       },
       setDisplayOptions: (nodeId, options) => {
         const terminal = terminalHandles.get(nodeId) as unknown as TerminalRendererIntrospection

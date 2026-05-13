@@ -8,9 +8,11 @@ import {
 } from '../../../src/contexts/settings/domain/terminalDisplayCalibration'
 import {
   clearTerminalClientDisplayCalibration,
+  inspectTerminalClientDisplayCalibration,
   readTerminalClientDisplayCalibration,
   writeTerminalClientDisplayCalibration,
 } from '../../../src/contexts/settings/presentation/renderer/terminalDisplayCalibrationStorage'
+import { buildTerminalDisplayCalibrationCandidates } from '../../../src/contexts/settings/presentation/renderer/terminalDisplayMeasurement'
 
 describe('terminal display calibration state', () => {
   beforeEach(() => {
@@ -55,6 +57,12 @@ describe('terminal display calibration state', () => {
     expect(getTerminalDisplayCalibrationQuality(Number.NaN)).toBe('needsAdjustment')
   })
 
+  it('keeps display calibration candidates on the default terminal line height', () => {
+    const candidates = buildTerminalDisplayCalibrationCandidates(13)
+
+    expect(new Set(candidates.map(candidate => candidate.lineHeight))).toEqual(new Set([1]))
+  })
+
   it('keeps saved display compensation gated by the user setting', () => {
     const calibration = normalizeTerminalClientDisplayCalibration({
       version: 1,
@@ -72,11 +80,27 @@ describe('terminal display calibration state', () => {
         cssCellHeight: 15,
         effectiveDpr: 2,
       },
+      measured: {
+        cols: 78,
+        rows: 23,
+        cssCellWidth: 7.75,
+        cssCellHeight: 15.5,
+        effectiveDpr: 2,
+      },
       score: 0,
       measuredAt: '2026-04-29T00:00:00.000Z',
     })
 
     expect(calibration).not.toBeNull()
+    expect(calibration).toMatchObject({
+      measured: {
+        cols: 78,
+        rows: 23,
+        cssCellWidth: 7.75,
+        cssCellHeight: 15.5,
+        effectiveDpr: 2,
+      },
+    })
     expect(
       resolveTerminalDisplayCalibrationCompensation({
         calibration,
@@ -89,6 +113,34 @@ describe('terminal display calibration state', () => {
         compensationEnabled: false,
       }),
     ).toBeNull()
+  })
+
+  it('normalizes legacy saved display compensation back to the default line height', () => {
+    const calibration = normalizeTerminalClientDisplayCalibration({
+      version: 1,
+      profileKey: createTerminalDisplayProfileKey({
+        terminalFontSize: 13,
+        terminalFontFamily: null,
+      }),
+      fontSize: 12.5,
+      lineHeight: 1.1,
+      letterSpacing: 0,
+      target: {
+        cols: 81,
+        rows: 24,
+        cssCellWidth: 7.5,
+        cssCellHeight: 15,
+        effectiveDpr: 2,
+      },
+      score: 0,
+      measuredAt: '2026-04-29T00:00:00.000Z',
+    })
+
+    expect(calibration).toMatchObject({
+      fontSize: 12.5,
+      lineHeight: 1,
+      letterSpacing: 0,
+    })
   })
 
   it('keeps client calibration scoped to the matching terminal appearance profile', () => {
@@ -178,5 +230,49 @@ describe('terminal display calibration state', () => {
         terminalDisplayReference: reference,
       }),
     ).toBeNull()
+  })
+
+  it('describes saved calibration even when it cannot apply without a reference', () => {
+    const profileKey = createTerminalDisplayProfileKey({
+      terminalFontSize: 13,
+      terminalFontFamily: 'Consolas',
+    })
+    writeTerminalClientDisplayCalibration({
+      version: 1,
+      profileKey,
+      fontSize: 12.5,
+      lineHeight: 1,
+      letterSpacing: 0,
+      target: {
+        cols: 81,
+        rows: 24,
+        cssCellWidth: 7.5,
+        cssCellHeight: 15,
+        effectiveDpr: 2,
+      },
+      score: 0,
+      measuredAt: '2026-04-29T00:00:00.000Z',
+    })
+
+    expect(
+      inspectTerminalClientDisplayCalibration({
+        terminalFontSize: 13,
+        terminalFontFamily: 'Consolas',
+        terminalDisplayReference: null,
+      }),
+    ).toMatchObject({
+      profileKey,
+      rawCalibrationPresent: true,
+      calibrationPresent: true,
+      profileMatches: true,
+      referencePresent: false,
+      referenceMatchesProfile: false,
+      calibrationMatchesReference: false,
+      applicableCalibrationPresent: false,
+      calibrationFontSize: 12.5,
+      calibrationLineHeight: 1,
+      calibrationLetterSpacing: 0,
+      calibrationScore: 0,
+    })
   })
 })

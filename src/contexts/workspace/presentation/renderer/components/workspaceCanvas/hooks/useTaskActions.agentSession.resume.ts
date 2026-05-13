@@ -95,6 +95,7 @@ export async function resumeTaskAgentSessionAction(
     bucket: context.agentSettings.standardWindowSizeBucket,
     provider: record.provider,
     terminalFontSize: context.agentSettings.terminalFontSize,
+    terminalDisplayMetrics: context.terminalDisplayMetrics,
   })
 
   try {

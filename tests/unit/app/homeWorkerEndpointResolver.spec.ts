@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -44,6 +44,8 @@ describe('home worker endpoint resolver', () => {
 
   it('re-reads the local worker connection file on each resolve', async () => {
     const dir = await createTempUserDataDir()
+    const isLocalEndpointAlive = vi.fn(async () => true)
+    const recoverLocalEndpoint = vi.fn(async () => null)
     const resolver = createHomeWorkerEndpointResolver({
       userDataPath: dir,
       config: {
@@ -53,6 +55,8 @@ describe('home worker endpoint resolver', () => {
         updatedAt: null,
       },
       effectiveMode: 'local',
+      isLocalEndpointAlive,
+      recoverLocalEndpoint,
     })
 
     await writeWorkerConnection(dir)
@@ -68,10 +72,17 @@ describe('home worker endpoint resolver', () => {
       port: 56277,
       token: 'token-2',
     })
+    expect(isLocalEndpointAlive).toHaveBeenCalledWith({
+      hostname: '127.0.0.1',
+      port: 56277,
+      token: 'token-2',
+    })
+    expect(recoverLocalEndpoint).not.toHaveBeenCalled()
   })
 
   it('keeps using the startup endpoint until the local worker connection file appears', async () => {
     const dir = await createTempUserDataDir()
+    const isLocalEndpointAlive = vi.fn(async () => true)
     const resolver = createHomeWorkerEndpointResolver({
       userDataPath: dir,
       config: {
@@ -86,9 +97,15 @@ describe('home worker endpoint resolver', () => {
         port: 4311,
         token: 'startup-token',
       },
+      isLocalEndpointAlive,
     })
 
     await expect(resolver()).resolves.toEqual({
+      hostname: '127.0.0.1',
+      port: 4311,
+      token: 'startup-token',
+    })
+    expect(isLocalEndpointAlive).toHaveBeenCalledWith({
       hostname: '127.0.0.1',
       port: 4311,
       token: 'startup-token',
@@ -100,6 +117,74 @@ describe('home worker endpoint resolver', () => {
       port: 56278,
       token: 'file-token',
     })
+  })
+
+  it('recovers local worker instead of returning a stale startup endpoint', async () => {
+    const dir = await createTempUserDataDir()
+    const recoverLocalEndpoint = vi.fn(async () => ({
+      hostname: '127.0.0.1',
+      port: 56279,
+      token: 'recovered-token',
+    }))
+    const resolver = createHomeWorkerEndpointResolver({
+      userDataPath: dir,
+      config: {
+        version: 1,
+        mode: 'local',
+        remote: null,
+        updatedAt: null,
+      },
+      effectiveMode: 'local',
+      initialEndpoint: {
+        hostname: '127.0.0.1',
+        port: 4311,
+        token: 'startup-token',
+      },
+      isLocalEndpointAlive: vi.fn(async () => false),
+      recoverLocalEndpoint,
+    })
+
+    await expect(resolver()).resolves.toEqual({
+      hostname: '127.0.0.1',
+      port: 56279,
+      token: 'recovered-token',
+    })
+    expect(recoverLocalEndpoint).toHaveBeenCalledTimes(1)
+  })
+
+  it('recovers local worker instead of returning a stale connection file endpoint', async () => {
+    const dir = await createTempUserDataDir()
+    await writeWorkerConnection(dir, { port: 4312, token: 'stale-file-token' })
+    const recoverLocalEndpoint = vi.fn(async () => ({
+      hostname: '127.0.0.1',
+      port: 56280,
+      token: 'recovered-token',
+    }))
+    const isLocalEndpointAlive = vi.fn(async () => false)
+    const resolver = createHomeWorkerEndpointResolver({
+      userDataPath: dir,
+      config: {
+        version: 1,
+        mode: 'local',
+        remote: null,
+        updatedAt: null,
+      },
+      effectiveMode: 'local',
+      isLocalEndpointAlive,
+      recoverLocalEndpoint,
+    })
+
+    await expect(resolver()).resolves.toEqual({
+      hostname: '127.0.0.1',
+      port: 56280,
+      token: 'recovered-token',
+    })
+    expect(isLocalEndpointAlive).toHaveBeenCalledWith({
+      hostname: '127.0.0.1',
+      port: 4312,
+      token: 'stale-file-token',
+    })
+    expect(recoverLocalEndpoint).toHaveBeenCalledTimes(1)
   })
 
   it('returns the saved remote endpoint for remote mode', async () => {

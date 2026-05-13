@@ -10,9 +10,18 @@
 
 **状态说明**: `[ ]` 未开始 | `[/]` 进行中 | `[x]` 完成 | `[!]` 阻塞 | `[-]` 跳过
 
-（无活跃任务）
-
 <!-- ARCHIVE -->
+
+### CHG-20260513-02: Fix createTerminalNodeAtFlowPosition display metrics passthrough
+<!-- APPROVED -->
+- [x] T-045 修复 createTerminalNodeAtFlowPosition 未透传 terminalDisplayMetrics 导致测试失败
+
+### CHG-20260513-01: Fix Resume Terminal Text Edge Overflow
+<!-- APPROVED -->
+- [x] T-041 修正 TERMINAL_NODE_XTERM_HORIZONTAL_PADDING_PX 常量（0→16，匹配 CSS padding:8px）
+- [x] T-042 在 hydrateTerminalFromSnapshot 中调度 overhang 检查（presentation snapshot 写入后）
+- [x] T-043 更新 workspaceCanvas.constants.spec.ts 期望值（padding 常量 0→16 导致 cols 减少 1-2）
+- [x] T-044 修改 overhang scheduler 的 schedule() 方法，允许重置 remainingFrames
 
 ### CHG-20260420-04: Fix Console-Open Drag Lag
 <!-- APPROVED -->

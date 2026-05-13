@@ -1,6 +1,7 @@
 import type { Node } from '@xyflow/react'
 import type { TranslateFn } from '@app/renderer/i18n'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
+import type { TerminalPtyGeometryDisplayMetrics } from '@contexts/workspace/domain/terminalPtyGeometry'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { CreateNodeInput } from '../types'
 import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
@@ -27,6 +28,7 @@ export interface TaskActionContext {
   workspaceId: string
   workspacePath: string
   environmentVariables?: Record<string, string>
+  terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
   t: TranslateFn
   onRequestPersistFlush?: () => void
 }

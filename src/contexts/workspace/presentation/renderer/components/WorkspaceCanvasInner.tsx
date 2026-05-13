@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../types'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
@@ -30,6 +31,16 @@ export function WorkspaceCanvasInner({
   focusSequence,
 }: WorkspaceCanvasProps) {
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
+  const terminalDisplayCalibration =
+    workspaceCanvasHooks.useResolvedTerminalDisplayCalibration(agentSettings)
+  const terminalDisplayMetrics = useMemo(
+    () =>
+      workspaceCanvasHooks.resolveTerminalDisplayMetrics({
+        terminalFontSize: agentSettings.terminalFontSize,
+        terminalDisplayCalibration,
+      }),
+    [agentSettings.terminalFontSize, terminalDisplayCalibration],
+  )
   const canvasState = workspaceCanvasHooks.useWorkspaceCanvasState({
     nodes,
     spaces,
@@ -145,6 +156,7 @@ export function WorkspaceCanvasInner({
     setContextMenu: canvasState.setContextMenu,
     createNodeForSession: nodeStore.createNodeForSession,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
+    terminalDisplayMetrics,
   })
   const {
     taskTagOptions,
@@ -183,6 +195,7 @@ export function WorkspaceCanvasInner({
     createTaskNode: nodeStore.createTaskNode,
     closeNode: nodeStore.closeNode,
     actionRefs,
+    terminalDisplayMetrics,
   })
   // prettier-ignore
   const roleUiProps = workspaceCanvasHooks.useWorkspaceCanvasRoleUi({ workspaceId, workspacePath, environmentVariables, agentSettings, canvasState, nodeStore, agentSupport, onSpacesChange, onRequestPersistFlush, onShowMessage, actionRefs })
@@ -202,6 +215,7 @@ export function WorkspaceCanvasInner({
     workspacePath,
     onShowMessage,
     agentSettings,
+    terminalDisplayCalibration,
     actionRefs,
     convertNoteToTask,
     setNodeLabelColorOverride: nodeStore.setNodeLabelColorOverride,
@@ -251,6 +265,7 @@ export function WorkspaceCanvasInner({
     environmentVariables,
     defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
     terminalFontSize: agentSettings.terminalFontSize,
+    terminalDisplayMetrics,
     spacesRef: canvasState.spacesRef,
     onSpacesChange,
     nodesRef: nodeStore.nodesRef,
@@ -291,6 +306,7 @@ export function WorkspaceCanvasInner({
     setActiveSpaceIdFromNodeNavigation: spacesApi.setActiveSpaceIdFromNodeNavigation,
     clearNodeSelection,
     onShowMessage,
+    terminalDisplayMetrics,
   })
   workspaceCanvasHooks.useWorkspaceCanvasRuntimeBindings({
     setNodes: nodeStore.setNodes,

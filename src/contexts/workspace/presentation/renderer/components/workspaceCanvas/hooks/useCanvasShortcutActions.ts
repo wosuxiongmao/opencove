@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
+import type { TerminalPtyGeometryDisplayMetrics } from '@contexts/workspace/domain/terminalPtyGeometry'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { CreateNodeInput } from '../types'
 import {
@@ -150,6 +151,7 @@ export function useWorkspaceCanvasShortcutActions({
   setActiveSpaceIdFromNodeNavigation,
   clearNodeSelection,
   onShowMessage,
+  terminalDisplayMetrics,
 }: {
   enabled: boolean
   workspaceId: string
@@ -189,6 +191,7 @@ export function useWorkspaceCanvasShortcutActions({
   setActiveSpaceIdFromNodeNavigation: (spaceId: string | null) => void
   clearNodeSelection: () => void
   onShowMessage?: (message: string, level: 'info' | 'warning' | 'error') => void
+  terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
 }): void {
   const selectNode = useWorkspaceCanvasSelectNode({
     setNodes,
@@ -254,6 +257,7 @@ export function useWorkspaceCanvasShortcutActions({
       defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
       standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
       terminalFontSize: agentSettings.terminalFontSize,
+      terminalDisplayMetrics,
       workspacePath,
       environmentVariables,
       spacesRef,
@@ -267,6 +271,7 @@ export function useWorkspaceCanvasShortcutActions({
     agentSettings.defaultTerminalProfileId,
     agentSettings.standardWindowSizeBucket,
     agentSettings.terminalFontSize,
+    terminalDisplayMetrics,
     cancelSpaceRename,
     canvasRef,
     createNodeForSession,

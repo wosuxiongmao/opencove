@@ -4,7 +4,9 @@ import {
   captureTerminalScrollState,
   installTerminalEffectiveDevicePixelRatioController,
   restoreTerminalScrollState,
+  restoreTerminalScrollStateAfterRedraw,
   resolveTerminalEffectiveDevicePixelRatio,
+  resizeTerminalPreservingScrollState,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/effectiveDevicePixelRatio'
 
 function createTerminalHarness(input?: {
@@ -12,11 +14,15 @@ function createTerminalHarness(input?: {
   baseY?: number
   viewportY?: number
   isUserScrolling?: boolean
+  resizeBaseY?: number
+  resizeViewportY?: number
 }) {
   const scrollListeners = new Set<() => void>()
   const resizeListeners = new Set<() => void>()
   const ownerWindow = {
     devicePixelRatio: input?.baseDevicePixelRatio ?? 1,
+    requestAnimationFrame: (callback: FrameRequestCallback) =>
+      window.requestAnimationFrame(callback),
     addEventListener: vi.fn((type: string, listener: EventListenerOrEventListenerObject) => {
       if (type === 'resize' && typeof listener === 'function') {
         resizeListeners.add(listener)
@@ -57,6 +63,31 @@ function createTerminalHarness(input?: {
         }
       ).buffer.active.viewportY = line
     },
+    resize: vi.fn((cols: number, rows: number) => {
+      ;(terminal as unknown as { cols: number; rows: number }).cols = cols
+      ;(terminal as unknown as { cols: number; rows: number }).rows = rows
+      if (typeof input?.resizeBaseY === 'number') {
+        ;(
+          terminal as unknown as {
+            buffer: { active: { baseY: number } }
+          }
+        ).buffer.active.baseY = input.resizeBaseY
+      }
+      if (typeof input?.resizeViewportY === 'number') {
+        ;(
+          terminal as unknown as {
+            buffer: { active: { viewportY: number } }
+          }
+        ).buffer.active.viewportY = input.resizeViewportY
+        ;(
+          terminal as unknown as {
+            _core: { _bufferService: { buffer: { ydisp: number } } }
+          }
+        )._core._bufferService.buffer.ydisp = input.resizeViewportY
+      }
+    }),
+    cols: 116,
+    rows: 38,
     onScroll: (listener: () => void) => {
       scrollListeners.add(listener)
       return {
@@ -169,6 +200,114 @@ describe('terminal effective device pixel ratio', () => {
       viewportY: 190,
       isUserScrolling: true,
       ydisp: 190,
+    })
+  })
+
+  it('preserves the visible history line when resizing a user-scrolled terminal', () => {
+    const harness = createTerminalHarness({
+      baseDevicePixelRatio: 1.25,
+      baseY: 646,
+      viewportY: 586,
+      isUserScrolling: true,
+      resizeBaseY: 1294,
+      resizeViewportY: 1294,
+    })
+
+    resizeTerminalPreservingScrollState(harness.terminal, 115, 38)
+
+    expect(harness.readState()).toMatchObject({
+      baseY: 1294,
+      viewportY: 586,
+      isUserScrolling: true,
+      ydisp: 586,
+    })
+  })
+
+  it('restores the visible history line again when xterm moves to bottom after resize', () => {
+    const animationFrames: FrameRequestCallback[] = []
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
+      animationFrames.push(callback)
+      return animationFrames.length
+    })
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined)
+    const harness = createTerminalHarness({
+      baseDevicePixelRatio: 1.25,
+      baseY: 646,
+      viewportY: 586,
+      isUserScrolling: true,
+      resizeBaseY: 1294,
+      resizeViewportY: 1294,
+    })
+
+    resizeTerminalPreservingScrollState(harness.terminal, 115, 38)
+    harness.emitScroll(1294, 1294)
+    animationFrames.shift()?.(0)
+
+    expect(harness.readState()).toMatchObject({
+      baseY: 1294,
+      viewportY: 586,
+      isUserScrolling: true,
+      ydisp: 586,
+    })
+  })
+
+  it('clamps to the current bottom when a destructive redraw shrinks scrollback below the previous viewport', () => {
+    const harness = createTerminalHarness({
+      baseDevicePixelRatio: 1.25,
+      baseY: 967,
+      viewportY: 571,
+      isUserScrolling: true,
+    })
+
+    const snapshot = captureTerminalScrollState(harness.terminal)
+    harness.emitScroll(0, 79)
+    restoreTerminalScrollState(harness.terminal, snapshot)
+
+    expect(harness.readState()).toMatchObject({
+      baseY: 79,
+      viewportY: 79,
+      isUserScrolling: false,
+      ydisp: 79,
+    })
+  })
+
+  it('does not restore after redraw when the previous viewport is still reachable', () => {
+    const harness = createTerminalHarness({
+      baseDevicePixelRatio: 1.25,
+      baseY: 967,
+      viewportY: 571,
+      isUserScrolling: true,
+    })
+
+    const snapshot = captureTerminalScrollState(harness.terminal)
+    harness.emitScroll(571, 968)
+    restoreTerminalScrollStateAfterRedraw(harness.terminal, snapshot)
+
+    expect(harness.readState()).toMatchObject({
+      baseY: 968,
+      viewportY: 571,
+      isUserScrolling: true,
+      ydisp: 571,
+    })
+  })
+
+  it('restores the previous history viewport when redraw jumps to bottom', () => {
+    const harness = createTerminalHarness({
+      baseDevicePixelRatio: 1.25,
+      baseY: 967,
+      viewportY: 571,
+      isUserScrolling: true,
+    })
+
+    const snapshot = captureTerminalScrollState(harness.terminal)
+    harness.emitScroll(968, 968)
+    restoreTerminalScrollStateAfterRedraw(harness.terminal, snapshot)
+
+    expect(harness.readState()).toMatchObject({
+      baseY: 968,
+      viewportY: 571,
+      isUserScrolling: true,
+      ydisp: 571,
     })
   })
 

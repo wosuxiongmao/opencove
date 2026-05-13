@@ -1,6 +1,7 @@
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type { BrowserMode } from '@shared/contracts/dto'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
+import type { TerminalPtyGeometryDisplayMetrics } from '@contexts/workspace/domain/terminalPtyGeometry'
 import type {
   ImageNodeData,
   Point,
@@ -51,6 +52,7 @@ export interface UseWorkspaceCanvasInteractionsParams {
   environmentVariables?: Record<string, string>
   defaultTerminalProfileId: string | null
   terminalFontSize: number
+  terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>

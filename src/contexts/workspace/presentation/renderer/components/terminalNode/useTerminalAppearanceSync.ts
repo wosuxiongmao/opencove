@@ -5,6 +5,11 @@ import {
   setTerminalViewportInteractionActive,
   setTerminalViewportZoom,
 } from './effectiveDevicePixelRatio'
+import {
+  captureTerminalDiagnosticsSnapshot,
+  captureTerminalLayoutDiagnostics,
+  createTerminalDiagnosticsLogger,
+} from './diagnostics'
 
 function isTerminalAtBottom(terminal: Terminal): boolean {
   const activeBuffer = terminal.buffer?.active
@@ -33,6 +38,49 @@ function isTerminalAtBottom(terminal: Terminal): boolean {
   return viewportElement.scrollTop >= maxScrollTop - 2
 }
 
+function isTerminalDiagnosticsEnabled(): boolean {
+  return window.opencoveApi?.meta?.enableTerminalDiagnostics === true
+}
+
+function logAppearanceSyncDiagnostics({
+  event,
+  terminal,
+  details,
+}: {
+  event: string
+  terminal: Terminal
+  details: Record<string, string | number | boolean | null>
+}): void {
+  if (!isTerminalDiagnosticsEnabled()) {
+    return
+  }
+
+  const container =
+    terminal.element?.closest('.terminal-node__terminal') instanceof HTMLElement
+      ? (terminal.element.closest('.terminal-node__terminal') as HTMLElement)
+      : null
+  const viewportElement =
+    terminal.element?.querySelector('.xterm-viewport') instanceof HTMLElement
+      ? (terminal.element.querySelector('.xterm-viewport') as HTMLElement)
+      : null
+  const logger = createTerminalDiagnosticsLogger({
+    enabled: true,
+    emit: window.opencoveApi?.debug?.logTerminalDiagnostics ?? (() => undefined),
+    base: {
+      source: 'renderer-terminal',
+      nodeId: 'unknown',
+      sessionId: 'unknown',
+      nodeKind: 'terminal',
+      title: 'appearance-sync',
+    },
+  })
+
+  logger.log(event, captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
+    ...captureTerminalLayoutDiagnostics({ terminal, container }),
+    ...details,
+  })
+}
+
 export function useTerminalAppearanceSync({
   terminalRef,
   syncTerminalSize,
@@ -41,6 +89,7 @@ export function useTerminalAppearanceSync({
   displayTerminalFontSize = terminalFontSize,
   displayTerminalLineHeight = 1,
   displayTerminalLetterSpacing = 0,
+  commitInitialDisplayGeometry = false,
   terminalFontFamily,
   width,
   height,
@@ -54,16 +103,26 @@ export function useTerminalAppearanceSync({
   displayTerminalFontSize?: number
   displayTerminalLineHeight?: number
   displayTerminalLetterSpacing?: number
+  commitInitialDisplayGeometry?: boolean
   terminalFontFamily: string | null
   width: number
   height: number
   viewportZoom: number
   isViewportInteractionActive: boolean
 }): void {
-  const hasInitializedFontSizeRef = useRef(false)
+  const hasInitializedDisplayMetricsRef = useRef(false)
   const hasInitializedFontFamilyRef = useRef(false)
   const previousSharedFontSizeRef = useRef(terminalFontSize)
+  const previousDisplayFontSizeRef = useRef(displayTerminalFontSize)
+  const previousDisplayLineHeightRef = useRef(displayTerminalLineHeight)
+  const previousDisplayLetterSpacingRef = useRef(displayTerminalLetterSpacing)
   const previousSharedFontFamilyRef = useRef(terminalFontFamily)
+  const previousFrameSizeRef = useRef<{ width: number; height: number } | null>(null)
+  const syncTerminalSizeRef = useRef(syncTerminalSize)
+  const commitTerminalGeometryRef = useRef(commitTerminalGeometry)
+
+  syncTerminalSizeRef.current = syncTerminalSize
+  commitTerminalGeometryRef.current = commitTerminalGeometry
 
   useEffect(() => {
     const terminal = terminalRef.current
@@ -72,25 +131,64 @@ export function useTerminalAppearanceSync({
     }
 
     const sharedFontSizeChanged = previousSharedFontSizeRef.current !== terminalFontSize
+    const displayFontSizeChanged = previousDisplayFontSizeRef.current !== displayTerminalFontSize
     previousSharedFontSizeRef.current = terminalFontSize
+    previousDisplayFontSizeRef.current = displayTerminalFontSize
+    const displayLineHeightChanged =
+      previousDisplayLineHeightRef.current !== displayTerminalLineHeight
+    const displayLetterSpacingChanged =
+      previousDisplayLetterSpacingRef.current !== displayTerminalLetterSpacing
+    previousDisplayLineHeightRef.current = displayTerminalLineHeight
+    previousDisplayLetterSpacingRef.current = displayTerminalLetterSpacing
     terminal.options.fontSize = displayTerminalFontSize
+    terminal.options.lineHeight = displayTerminalLineHeight
+    terminal.options.letterSpacing = displayTerminalLetterSpacing
+    logAppearanceSyncDiagnostics({
+      event: 'appearance-display-metrics-applied',
+      terminal,
+      details: {
+        terminalFontSize,
+        displayTerminalFontSize,
+        displayFontSizeChanged,
+        sharedFontSizeChanged,
+        displayTerminalLineHeight,
+        displayLineHeightChanged,
+        displayTerminalLetterSpacing,
+        displayLetterSpacingChanged,
+      },
+    })
+
     const frame = requestAnimationFrame(() => {
-      if (hasInitializedFontSizeRef.current && sharedFontSizeChanged) {
-        commitTerminalGeometry()
+      if (hasInitializedDisplayMetricsRef.current && sharedFontSizeChanged) {
+        commitTerminalGeometryRef.current()
         return
       }
 
-      hasInitializedFontSizeRef.current = true
-      syncTerminalSize()
+      if (
+        hasInitializedDisplayMetricsRef.current &&
+        (displayFontSizeChanged || displayLineHeightChanged || displayLetterSpacingChanged)
+      ) {
+        commitTerminalGeometryRef.current()
+        return
+      }
+
+      hasInitializedDisplayMetricsRef.current = true
+      if (commitInitialDisplayGeometry) {
+        commitTerminalGeometryRef.current()
+        return
+      }
+
+      syncTerminalSizeRef.current()
     })
 
     return () => {
       cancelAnimationFrame(frame)
     }
   }, [
-    commitTerminalGeometry,
+    commitInitialDisplayGeometry,
     displayTerminalFontSize,
-    syncTerminalSize,
+    displayTerminalLetterSpacing,
+    displayTerminalLineHeight,
     terminalFontSize,
     terminalRef,
   ])
@@ -101,45 +199,50 @@ export function useTerminalAppearanceSync({
       return
     }
 
-    terminal.options.lineHeight = displayTerminalLineHeight
-    terminal.options.letterSpacing = displayTerminalLetterSpacing
-    const frame = requestAnimationFrame(syncTerminalSize)
-
-    return () => {
-      cancelAnimationFrame(frame)
-    }
-  }, [displayTerminalLetterSpacing, displayTerminalLineHeight, syncTerminalSize, terminalRef])
-
-  useEffect(() => {
-    const terminal = terminalRef.current
-    if (!terminal) {
-      return
-    }
-
     const sharedFontFamilyChanged = previousSharedFontFamilyRef.current !== terminalFontFamily
     previousSharedFontFamilyRef.current = terminalFontFamily
     terminal.options.fontFamily = terminalFontFamily ?? DEFAULT_TERMINAL_FONT_FAMILY
+    logAppearanceSyncDiagnostics({
+      event: 'appearance-font-family-applied',
+      terminal,
+      details: {
+        terminalFontFamily: terminalFontFamily ?? DEFAULT_TERMINAL_FONT_FAMILY,
+        sharedFontFamilyChanged,
+      },
+    })
     const frame = requestAnimationFrame(() => {
       if (hasInitializedFontFamilyRef.current && sharedFontFamilyChanged) {
-        commitTerminalGeometry()
+        commitTerminalGeometryRef.current()
         return
       }
 
       hasInitializedFontFamilyRef.current = true
-      syncTerminalSize()
+      syncTerminalSizeRef.current()
     })
 
     return () => {
       cancelAnimationFrame(frame)
     }
-  }, [commitTerminalGeometry, syncTerminalSize, terminalFontFamily, terminalRef])
+  }, [terminalFontFamily, terminalRef])
 
   useEffect(() => {
-    const frame = requestAnimationFrame(syncTerminalSize)
+    const previousFrameSize = previousFrameSizeRef.current
+    previousFrameSizeRef.current = { width, height }
+    const frame = requestAnimationFrame(() => {
+      if (
+        previousFrameSize !== null &&
+        (previousFrameSize.width !== width || previousFrameSize.height !== height)
+      ) {
+        commitTerminalGeometryRef.current()
+        return
+      }
+
+      syncTerminalSizeRef.current()
+    })
     return () => {
       cancelAnimationFrame(frame)
     }
-  }, [height, syncTerminalSize, width])
+  }, [height, width])
 
   useEffect(() => {
     setTerminalViewportInteractionActive(terminalRef.current, isViewportInteractionActive)

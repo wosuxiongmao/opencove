@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
+import type { TerminalPtyGeometryDisplayMetrics } from '@contexts/workspace/domain/terminalPtyGeometry'
 import type { Point } from '../../../types'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { ContextMenuState, CreateNodeInput } from '../types'
@@ -23,6 +24,7 @@ export function useWorkspaceCanvasTerminalCreation({
   nodesRef,
   standardWindowSizeBucket,
   terminalFontSize,
+  terminalDisplayMetrics,
   createNodeForSession,
   setNodes,
   onSpacesChange,
@@ -38,6 +40,7 @@ export function useWorkspaceCanvasTerminalCreation({
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   standardWindowSizeBucket: StandardWindowSizeBucket
   terminalFontSize: number
+  terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   setNodes: SetNodes
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
@@ -52,6 +55,7 @@ export function useWorkspaceCanvasTerminalCreation({
         defaultTerminalProfileId,
         standardWindowSizeBucket,
         terminalFontSize,
+        terminalDisplayMetrics,
         workspacePath,
         environmentVariables,
         spacesRef,
@@ -74,6 +78,7 @@ export function useWorkspaceCanvasTerminalCreation({
       spacesRef,
       standardWindowSizeBucket,
       terminalFontSize,
+      terminalDisplayMetrics,
       workspaceId,
       workspacePath,
     ],

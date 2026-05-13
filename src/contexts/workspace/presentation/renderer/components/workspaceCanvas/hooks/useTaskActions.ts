@@ -6,6 +6,7 @@ import {
   resolveTaskTitleProvider,
   type AgentSettings,
 } from '@contexts/settings/domain/agentSettings'
+import type { TerminalPtyGeometryDisplayMetrics } from '@contexts/workspace/domain/terminalPtyGeometry'
 import type {
   TaskPriority,
   TaskRuntimeStatus,
@@ -40,6 +41,7 @@ interface UseTaskActionsParams {
   workspacePath: string
   environmentVariables?: Record<string, string>
   taskTagOptions: string[]
+  terminalDisplayMetrics: TerminalPtyGeometryDisplayMetrics
   onRequestPersistFlush?: () => void
   runTaskAgentRef: MutableRefObject<(nodeId: string) => Promise<void>>
   resumeTaskAgentSessionRef: MutableRefObject<
@@ -64,6 +66,7 @@ export function useWorkspaceCanvasTaskActions({
   workspacePath,
   environmentVariables,
   taskTagOptions,
+  terminalDisplayMetrics,
   onRequestPersistFlush,
   runTaskAgentRef,
   resumeTaskAgentSessionRef,
@@ -93,6 +96,7 @@ export function useWorkspaceCanvasTaskActions({
         workspacePath,
         environmentVariables,
         t,
+        terminalDisplayMetrics,
         onRequestPersistFlush,
       })
     },
@@ -108,6 +112,7 @@ export function useWorkspaceCanvasTaskActions({
       setNodes,
       spacesRef,
       t,
+      terminalDisplayMetrics,
       workspaceId,
       workspacePath,
     ],
@@ -158,6 +163,7 @@ export function useWorkspaceCanvasTaskActions({
         workspacePath,
         environmentVariables,
         t,
+        terminalDisplayMetrics,
         onRequestPersistFlush,
       })
     },
@@ -172,6 +178,7 @@ export function useWorkspaceCanvasTaskActions({
       setNodes,
       spacesRef,
       t,
+      terminalDisplayMetrics,
       workspaceId,
       workspacePath,
     ],

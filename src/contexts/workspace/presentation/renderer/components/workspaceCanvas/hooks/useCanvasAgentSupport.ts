@@ -18,6 +18,7 @@ export function useWorkspaceCanvasAgentSupport({
   setContextMenu,
   createNodeForSession,
   standardWindowSizeBucket,
+  terminalDisplayMetrics,
 }: {
   nodesRef: Parameters<typeof useWorkspaceCanvasAgentNodeLifecycle>[0]['nodesRef']
   setNodes: Parameters<typeof useWorkspaceCanvasAgentNodeLifecycle>[0]['setNodes']
@@ -45,6 +46,9 @@ export function useWorkspaceCanvasAgentSupport({
   standardWindowSizeBucket: Parameters<
     typeof useWorkspaceCanvasAgentLauncher
   >[0]['standardWindowSizeBucket']
+  terminalDisplayMetrics: Parameters<
+    typeof useWorkspaceCanvasAgentNodeLifecycle
+  >[0]['terminalDisplayMetrics']
 }): ReturnType<typeof useWorkspaceCanvasAgentNodeLifecycle> &
   Pick<
     ReturnType<typeof useWorkspaceCanvasAgentLauncher>,
@@ -69,6 +73,7 @@ export function useWorkspaceCanvasAgentSupport({
     agentFullAccess: agentSettings.agentFullAccess,
     defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
     terminalFontSize: agentSettings.terminalFontSize,
+    terminalDisplayMetrics,
     agentEnvByProvider: agentSettings.agentEnvByProvider,
     agentExecutablePathOverrideByProvider: agentSettings.agentExecutablePathOverrideByProvider,
     environmentVariables,
@@ -90,6 +95,7 @@ export function useWorkspaceCanvasAgentSupport({
     setContextMenu,
     createNodeForSession,
     standardWindowSizeBucket,
+    terminalDisplayMetrics,
     buildAgentNodeTitle,
   })
 

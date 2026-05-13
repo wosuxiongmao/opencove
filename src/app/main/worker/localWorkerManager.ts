@@ -22,6 +22,25 @@ function isTruthyEnv(rawValue: string | undefined): boolean {
   return rawValue === '1' || rawValue.toLowerCase() === 'true'
 }
 
+export function resolveForwardedLocalWorkerDiagnosticsEnv(
+  envSource: NodeJS.ProcessEnv = process.env,
+): Record<string, string> {
+  const env: Record<string, string> = {}
+  const keys = [
+    'OPENCOVE_AGENT_LAUNCH_DIAGNOSTICS',
+    'OPENCOVE_TERMINAL_DIAGNOSTICS',
+    'OPENCOVE_TERMINAL_INPUT_DIAGNOSTICS',
+  ]
+
+  for (const key of keys) {
+    if (isTruthyEnv(envSource[key])) {
+      env[key] = '1'
+    }
+  }
+
+  return env
+}
+
 function resolveWorkerScriptPath(): string {
   if (app.isPackaged) {
     return resolvePackagedWorkerScriptPath(process.resourcesPath)
@@ -256,6 +275,7 @@ function spawnWorkerChild(args: string[], userDataPath: string): WorkerChildProc
       ...(isTruthyEnv(process.env['OPENCOVE_DEV_USE_SHARED_USER_DATA'])
         ? { OPENCOVE_DEV_USE_SHARED_USER_DATA: '1' }
         : {}),
+      ...resolveForwardedLocalWorkerDiagnosticsEnv(),
     },
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,

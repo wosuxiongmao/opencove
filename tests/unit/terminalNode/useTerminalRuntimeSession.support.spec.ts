@@ -492,4 +492,41 @@ describe('useTerminalRuntimeSession support', () => {
     expect(commitInitialGeometry).toHaveBeenCalledWith(baselineSnapshot)
     expect(presentationSnapshot).toHaveBeenCalledTimes(2)
   })
+
+  it('still reconciles local measured geometry after a live reattach baseline is attached', async () => {
+    const baselineSnapshot = createPresentationSnapshot(97, 40, 42)
+    const committedSnapshot = createPresentationSnapshot(104, 41, 43)
+    const presentationSnapshot = vi
+      .fn()
+      .mockResolvedValueOnce(baselineSnapshot)
+      .mockResolvedValueOnce(committedSnapshot)
+    const attach = vi.fn(async () => undefined)
+    const commitInitialGeometry = vi.fn(async () => ({ cols: 104, rows: 41, changed: true }))
+
+    vi.stubGlobal('window', {
+      opencoveApi: {
+        pty: {
+          presentationSnapshot,
+        },
+      },
+    })
+
+    const { attachPromise, presentationSnapshotPromise } = prepareRuntimePresentationAttach({
+      ptyApi: {
+        attach,
+      } as never,
+      sessionId: 'session-1',
+      isLiveSessionReattach: true,
+      commitInitialGeometry,
+      requirePostGeometrySnapshotOutput: false,
+    })
+
+    await attachPromise
+    const snapshot = await presentationSnapshotPromise
+
+    expect(snapshot).toBe(committedSnapshot)
+    expect(attach).toHaveBeenCalledWith({ sessionId: 'session-1', afterSeq: 42 })
+    expect(commitInitialGeometry).toHaveBeenCalledWith(baselineSnapshot)
+    expect(presentationSnapshot).toHaveBeenCalledTimes(2)
+  })
 })
