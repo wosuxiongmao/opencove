@@ -132,6 +132,7 @@ export function useWorkspaceCanvasNodeCreation({
             normalizedExpectedDirectory && normalizedExpectedDirectory.length > 0
               ? normalizedExpectedDirectory
               : null,
+          autoFocus: true,
           ...EMPTY_NODE_KIND_DATA,
           agent: kind === 'agent' ? (agent ?? null) : null,
         },

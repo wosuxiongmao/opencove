@@ -50,6 +50,7 @@ export function TerminalNode({
   agentResumeSessionId = null,
   agentResumeSessionIdVerified = false,
   isLiveSessionReattach = false,
+  autoFocus = false,
   terminalGeometry = null,
   terminalThemeMode = 'sync-with-ui',
   isSelected = false,
@@ -94,7 +95,7 @@ export function TerminalNode({
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const shouldRestoreTerminalFocusRef = useRef(false)
+  const shouldRestoreTerminalFocusRef = useRef(autoFocus)
   const latestSessionIdRef = useRef(sessionId)
   const preservedXtermSessionRef = useRef<XtermSession | null>(null)
   const recoveryScrollStateRef = useRef<TerminalScrollStateSnapshot | null>(null)

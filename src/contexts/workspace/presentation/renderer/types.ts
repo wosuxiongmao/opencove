@@ -135,6 +135,7 @@ export interface TerminalNodeData {
   [key: string]: unknown
   sessionId: string
   isLiveSessionReattach?: boolean
+  autoFocus?: boolean
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind
   terminalGeometry?: TerminalPtyGeometry | null

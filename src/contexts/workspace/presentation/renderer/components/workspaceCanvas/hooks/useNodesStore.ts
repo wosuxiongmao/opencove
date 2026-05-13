@@ -7,7 +7,7 @@ import { useWebsiteWindowStore } from '../../../store/useWebsiteWindowStore'
 import { findNearestFreePosition } from '../../../utils/collision'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../terminalNode/constants'
-import { centerNodeInViewport } from '../helpers'
+import { focusNodeInViewport } from '../helpers'
 import { syncWorkspaceCanvasTestState } from '../testHarness'
 import {
   resolveAgentNodeMinSize,
@@ -77,7 +77,7 @@ export function useWorkspaceCanvasNodesStore({
     const viewport = reactFlow.getViewport?.() ?? null
     const zoom = viewport && Number.isFinite(viewport.zoom) && viewport.zoom > 0 ? viewport.zoom : 1
 
-    centerNodeInViewport(reactFlow, targetNode, {
+    focusNodeInViewport(reactFlow, targetNode, {
       duration: 180,
       zoom,
     })

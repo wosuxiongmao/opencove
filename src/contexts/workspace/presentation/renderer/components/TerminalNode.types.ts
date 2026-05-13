@@ -30,6 +30,7 @@ export interface TerminalNodeProps {
   agentResumeSessionId?: string | null
   agentResumeSessionIdVerified?: boolean
   isLiveSessionReattach?: boolean
+  autoFocus?: boolean
   terminalThemeMode?: TerminalThemeMode
   isSelected?: boolean
   isDragging?: boolean
