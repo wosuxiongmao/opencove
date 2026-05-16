@@ -268,7 +268,7 @@
 .terminal-node__resizer--right {
   top: 34px;
   bottom: 8px;
-  width: 4px;
+  width: 10px;
   cursor: ew-resize;
 }
 

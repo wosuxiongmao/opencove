@@ -31,4 +31,12 @@ describe('terminal node styles', () => {
       /\.terminal-node__terminal\s+\.xterm-decoration-overview-ruler\s*{[^}]*\bdisplay:\s*none\s*!important;[^}]*\bwidth:\s*0\s*!important;[^}]*\bopacity:\s*0\s*!important;[^}]*\bpointer-events:\s*none\s*!important;[^}]*}/s,
     )
   })
+
+  it('keeps terminal side resize hitboxes easy to grab', () => {
+    const css = readRendererStyle('terminal-node.css')
+
+    expect(css).toMatch(
+      /\.terminal-node__resizer--left,\s*\.terminal-node__resizer--right\s*{[^}]*\bwidth:\s*10px;[^}]*}/s,
+    )
+  })
 })
