@@ -42,4 +42,42 @@ describe('BrowserPtyClient', () => {
     })
     expect(dataListener).not.toHaveBeenCalled()
   })
+
+  it('does not advance replay cursor from attached acknowledgements', async () => {
+    vi.stubGlobal('window', {
+      location: {
+        protocol: 'http:',
+        host: 'localhost:3000',
+        search: '',
+      },
+      clearTimeout,
+      setTimeout,
+    })
+
+    const client = new BrowserPtyClient()
+    const dataListener = vi.fn()
+    const internals = client as unknown as {
+      handleMessage: (raw: string) => Promise<void>
+      attachedSessions: Map<string, { lastSeq: number }>
+    }
+
+    client.onData(dataListener)
+
+    await internals.handleMessage(
+      JSON.stringify({ type: 'attached', sessionId: 'session-1', seq: 11 }),
+    )
+
+    expect(internals.attachedSessions.get('session-1')?.lastSeq).toBe(0)
+
+    await internals.handleMessage(
+      JSON.stringify({ type: 'data', sessionId: 'session-1', data: 'hello', seq: 11 }),
+    )
+
+    expect(internals.attachedSessions.get('session-1')?.lastSeq).toBe(11)
+    expect(dataListener).toHaveBeenCalledWith({
+      sessionId: 'session-1',
+      data: 'hello',
+      seq: 11,
+    })
+  })
 })

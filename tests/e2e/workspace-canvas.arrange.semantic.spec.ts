@@ -97,6 +97,8 @@ test.describe('Workspace Canvas - Arrange Semantics', () => {
       ).toBeVisible()
 
       await window.locator('[data-testid="workspace-context-arrange-order-created"]').click()
+      await window.locator('[data-testid="workspace-context-arrange"]').click()
+      await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
 
       let layout: Awaited<ReturnType<typeof readSeededWorkspaceLayout>> | null = null
       await expect

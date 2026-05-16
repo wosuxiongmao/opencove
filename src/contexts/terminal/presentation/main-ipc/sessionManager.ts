@@ -22,6 +22,12 @@ const PTY_DATA_FLUSH_DELAY_MS = 32
 const PTY_DATA_HIGH_VOLUME_FLUSH_DELAY_MS = 64
 const PTY_DATA_HIGH_VOLUME_BATCH_CHARS = 32_000
 const PTY_DATA_MAX_BATCH_CHARS = 256_000
+const PTY_DATA_REPLAY_WINDOW_MAX_CHARS = 1_000_000
+
+type PtyDataReplayChunk = {
+  seq: number
+  data: string
+}
 
 export interface SessionManagerDeps {
   sendToAllWindows: <T>(channel: string, payload: T) => void
@@ -43,6 +49,8 @@ export class TerminalSessionManager {
   private readonly snapshots = new Map<string, SnapshotState>()
   private readonly presentationSessions = new Map<string, TerminalPresentationSession>()
   private readonly presentationSeqs = new Map<string, number>()
+  private readonly replayPtyDataChunksBySession = new Map<string, PtyDataReplayChunk[]>()
+  private readonly replayPtyDataCharsBySession = new Map<string, number>()
 
   private readonly pendingPtyDataChunksBySession = new Map<string, string[]>()
   private readonly pendingPtyDataCharsBySession = new Map<string, number>()
@@ -148,6 +156,51 @@ export class TerminalSessionManager {
     }
   }
 
+  private appendPtyDataReplayChunk(sessionId: string, seq: number, data: string): void {
+    const chunks = this.replayPtyDataChunksBySession.get(sessionId) ?? []
+    if (chunks.length === 0) {
+      this.replayPtyDataChunksBySession.set(sessionId, chunks)
+    }
+
+    chunks.push({ seq, data })
+    let totalChars = (this.replayPtyDataCharsBySession.get(sessionId) ?? 0) + data.length
+
+    while (totalChars > PTY_DATA_REPLAY_WINDOW_MAX_CHARS && chunks.length > 1) {
+      const head = chunks.shift()
+      if (!head) {
+        break
+      }
+      totalChars -= head.data.length
+    }
+
+    this.replayPtyDataCharsBySession.set(sessionId, totalChars)
+  }
+
+  private replayPtyDataToSubscriber(
+    contentsId: number,
+    sessionId: string,
+    afterSeq?: number | null,
+  ): void {
+    const chunks = this.replayPtyDataChunksBySession.get(sessionId) ?? []
+    const currentSeq = this.presentationSeqs.get(sessionId) ?? 0
+    const earliestSeq = chunks[0]?.seq ?? currentSeq
+    const normalizedAfterSeq =
+      typeof afterSeq === 'number' && Number.isFinite(afterSeq) ? Math.floor(afterSeq) : null
+    const effectiveAfterSeq = normalizedAfterSeq === null ? earliestSeq - 1 : normalizedAfterSeq
+
+    for (const chunk of chunks) {
+      if (chunk.seq <= effectiveAfterSeq) {
+        continue
+      }
+
+      this.sendPtyDataToSubscriber(contentsId, {
+        sessionId,
+        seq: chunk.seq,
+        data: chunk.data,
+      })
+    }
+  }
+
   private resolvePtyDataFlushDelay(pendingChars: number): number {
     return pendingChars >= PTY_DATA_HIGH_VOLUME_BATCH_CHARS
       ? PTY_DATA_HIGH_VOLUME_FLUSH_DELAY_MS
@@ -190,6 +243,7 @@ export class TerminalSessionManager {
         this.presentationSessions.get(sessionId) ?? new TerminalPresentationSession({ sessionId })
       this.presentationSessions.set(sessionId, presentationSession)
       void presentationSession.applyOutput(nextSeq, data)
+      this.appendPtyDataReplayChunk(sessionId, nextSeq, data)
     }
 
     if (!this.hasPtyDataSubscribers(sessionId)) {
@@ -276,8 +330,9 @@ export class TerminalSessionManager {
     this.presentationSeqs.set(sessionId, 0)
   }
 
-  attach(contentsId: number, sessionId: string): void {
+  attach(contentsId: number, sessionId: string, afterSeq?: number | null): void {
     this.trackWebContentsSubscriptionLifecycle(contentsId)
+    this.flushPtyDataBroadcast(sessionId)
 
     const sessions = this.ptyDataSessionsByWebContentsId.get(contentsId) ?? new Set<string>()
     sessions.add(sessionId)
@@ -288,7 +343,7 @@ export class TerminalSessionManager {
     this.ptyDataSubscribersBySessionId.set(sessionId, subscribers)
 
     this.onProbeSubscriptionChanged(sessionId)
-    this.flushPtyDataBroadcast(sessionId)
+    this.replayPtyDataToSubscriber(contentsId, sessionId, afterSeq)
   }
 
   detach(contentsId: number, sessionId: string): void {
@@ -358,6 +413,8 @@ export class TerminalSessionManager {
     this.terminatedSessions.add(sessionId)
     this.snapshots.delete(sessionId)
     this.presentationSeqs.delete(sessionId)
+    this.replayPtyDataChunksBySession.delete(sessionId)
+    this.replayPtyDataCharsBySession.delete(sessionId)
     this.presentationSessions.get(sessionId)?.dispose()
     this.presentationSessions.delete(sessionId)
   }
@@ -384,6 +441,8 @@ export class TerminalSessionManager {
     this.terminatedSessions.clear()
     this.snapshots.clear()
     this.presentationSeqs.clear()
+    this.replayPtyDataChunksBySession.clear()
+    this.replayPtyDataCharsBySession.clear()
     this.presentationSessions.forEach(session => session.dispose())
     this.presentationSessions.clear()
   }

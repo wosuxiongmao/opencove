@@ -418,8 +418,8 @@ export function createPtyRuntime(): PtyRuntime {
         externalMetadataListeners.delete(listener)
       }
     },
-    attach: async (contentsId, sessionId) => {
-      manager.attach(contentsId, sessionId)
+    attach: async (contentsId, sessionId, afterSeq) => {
+      manager.attach(contentsId, sessionId, afterSeq)
     },
     detach: async (contentsId, sessionId) => {
       manager.detach(contentsId, sessionId)

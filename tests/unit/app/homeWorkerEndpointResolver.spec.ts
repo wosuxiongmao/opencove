@@ -119,6 +119,49 @@ describe('home worker endpoint resolver', () => {
     })
   })
 
+  it('reuses a recently healthy local endpoint without pinging on every resolve', async () => {
+    const dir = await createTempUserDataDir()
+    await writeWorkerConnection(dir)
+    let currentTimeMs = 1_000
+    const isLocalEndpointAlive = vi.fn(async () => true)
+    const recoverLocalEndpoint = vi.fn(async () => null)
+    const resolver = createHomeWorkerEndpointResolver({
+      userDataPath: dir,
+      config: {
+        version: 1,
+        mode: 'local',
+        remote: null,
+        updatedAt: null,
+      },
+      effectiveMode: 'local',
+      isLocalEndpointAlive,
+      recoverLocalEndpoint,
+      localEndpointHealthCheckTtlMs: 5_000,
+      now: () => currentTimeMs,
+    })
+
+    await expect(resolver()).resolves.toEqual({
+      hostname: '127.0.0.1',
+      port: 4310,
+      token: 'token-1',
+    })
+    currentTimeMs += 100
+    await expect(resolver()).resolves.toEqual({
+      hostname: '127.0.0.1',
+      port: 4310,
+      token: 'token-1',
+    })
+    currentTimeMs += 5_000
+    await expect(resolver()).resolves.toEqual({
+      hostname: '127.0.0.1',
+      port: 4310,
+      token: 'token-1',
+    })
+
+    expect(isLocalEndpointAlive).toHaveBeenCalledTimes(2)
+    expect(recoverLocalEndpoint).not.toHaveBeenCalled()
+  })
+
   it('recovers local worker instead of returning a stale startup endpoint', async () => {
     const dir = await createTempUserDataDir()
     const recoverLocalEndpoint = vi.fn(async () => ({

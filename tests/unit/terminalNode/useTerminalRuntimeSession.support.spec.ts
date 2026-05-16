@@ -5,10 +5,7 @@ import {
   isAuthoritativeHydrationBaselineSource,
   prepareRuntimePresentationAttach,
   requestPresentationSnapshotAfterGeometry,
-  shouldAwaitRestoredAgentVisibleOutput,
-  shouldGateRestoredAgentInput,
   shouldProtectHydratedAgentHistory,
-  shouldRequirePostGeometrySnapshotOutput,
   shouldReusePreservedXtermSession,
   shouldTreatHydratedAgentBaselineAsPlaceholder,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/useTerminalRuntimeSession.support'
@@ -69,106 +66,6 @@ describe('useTerminalRuntimeSession support', () => {
         agentLaunchMode: 'resume',
         persistedSnapshot: '[restored history]',
         baselineSource: 'empty',
-      }),
-    ).toBe(false)
-  })
-
-  it('gates restored agent input until live output catches up', () => {
-    expect(
-      shouldGateRestoredAgentInput({
-        kind: 'agent',
-        persistedSnapshot: '',
-        agentResumeSessionIdVerified: true,
-        agentLaunchMode: 'resume',
-      }),
-    ).toBe(true)
-
-    expect(
-      shouldAwaitRestoredAgentVisibleOutput({
-        kind: 'agent',
-        agentResumeSessionIdVerified: true,
-        agentLaunchMode: 'resume',
-      }),
-    ).toBe(true)
-
-    expect(
-      shouldGateRestoredAgentInput({
-        kind: 'agent',
-        persistedSnapshot: '',
-        agentResumeSessionIdVerified: true,
-        agentLaunchMode: 'resume',
-      }),
-    ).toBe(true)
-
-    expect(
-      shouldGateRestoredAgentInput({
-        kind: 'agent',
-        persistedSnapshot: '',
-        agentResumeSessionIdVerified: false,
-        agentLaunchMode: 'new',
-      }),
-    ).toBe(true)
-
-    expect(
-      shouldAwaitRestoredAgentVisibleOutput({
-        kind: 'agent',
-        agentResumeSessionIdVerified: false,
-        agentLaunchMode: 'new',
-      }),
-    ).toBe(true)
-
-    expect(
-      shouldAwaitRestoredAgentVisibleOutput({
-        kind: 'terminal',
-        agentResumeSessionIdVerified: true,
-        agentLaunchMode: 'resume',
-      }),
-    ).toBe(false)
-  })
-
-  it('requires post-geometry visible snapshots for cold agent hydration', () => {
-    expect(
-      shouldRequirePostGeometrySnapshotOutput({
-        kind: 'agent',
-        isLiveSessionReattach: false,
-        agentResumeSessionIdVerified: true,
-        agentLaunchMode: 'resume',
-      }),
-    ).toBe(true)
-
-    expect(
-      shouldRequirePostGeometrySnapshotOutput({
-        kind: 'agent',
-        isLiveSessionReattach: false,
-        agentResumeSessionIdVerified: false,
-        agentLaunchMode: 'resume',
-      }),
-    ).toBe(true)
-
-    expect(
-      shouldRequirePostGeometrySnapshotOutput({
-        kind: 'agent',
-        isLiveSessionReattach: true,
-        agentResumeSessionIdVerified: true,
-        agentLaunchMode: 'resume',
-      }),
-    ).toBe(false)
-
-    expect(
-      shouldRequirePostGeometrySnapshotOutput({
-        kind: 'agent',
-        isLiveSessionReattach: false,
-        agentResumeSessionIdVerified: false,
-        agentLaunchMode: 'new',
-      }),
-    ).toBe(true)
-
-    expect(
-      shouldRequirePostGeometrySnapshotOutput({
-        kind: 'terminal',
-        isLiveSessionReattach: false,
-        agentResumeSessionIdVerified: true,
-        agentLaunchMode: 'resume',
       }),
     ).toBe(false)
   })

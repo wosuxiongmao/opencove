@@ -3,11 +3,7 @@ import { useStore } from '@xyflow/react'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { Terminal } from '@xterm/xterm'
 import { createTerminalCommandInputState } from './terminalNode/commandInput'
-import {
-  commitSettledTerminalNodeGeometry,
-  fitTerminalNodeToMeasuredSize,
-  refreshTerminalNodeSize,
-} from './terminalNode/syncTerminalNodeSize'
+import { refreshTerminalNodeSize } from './terminalNode/syncTerminalNodeSize'
 import {
   captureTerminalScrollState,
   type TerminalScrollStateSnapshot,
@@ -25,6 +21,7 @@ import type { TerminalOutputScheduler } from './terminalNode/outputScheduler'
 import { useTerminalRuntimeSession } from './terminalNode/useTerminalRuntimeSession'
 import { useTerminalPlaceholderSession } from './terminalNode/useTerminalPlaceholderSession'
 import { useWebglCanvasTransformCleanupScheduler } from './terminalNode/useWebglCanvasTransformCleanupScheduler'
+import { useCommittedTerminalGeometry } from './terminalNode/useCommittedTerminalGeometry'
 import type { XtermSession } from './terminalNode/xtermSession'
 import { invalidateCachedTerminalScreenState } from './terminalNode/screenStateCache'
 import type { PreferredTerminalRendererMode } from './terminalNode/preferredRenderer'
@@ -265,36 +262,17 @@ export function TerminalNode({
     scheduleWebglCanvasTransformCleanup()
   }, [scheduleWebglCanvasTransformCleanup])
 
-  const commitTerminalGeometry = useCallback(
-    (reason: 'frame_commit' | 'appearance_commit') => {
-      if (suppressPtyResizeRef.current || sessionId.trim().length === 0) {
-        fitTerminalNodeToMeasuredSize({
-          terminalRef,
-          fitAddonRef,
-          containerRef,
-          isPointerResizingRef,
-        })
-        return
-      }
-
-      const committedSessionId = sessionId
-      void commitSettledTerminalNodeGeometry({
-        terminalRef,
-        fitAddonRef,
-        containerRef,
-        isPointerResizingRef,
-        lastCommittedPtySizeRef,
-        sessionId,
-        reason,
-        shouldCommit: () => latestSessionIdRef.current === committedSessionId,
-      }).then(() => {
-        if (latestSessionIdRef.current === committedSessionId) {
-          scheduleWebglCanvasTransformCleanup()
-        }
-      })
-    },
-    [scheduleWebglCanvasTransformCleanup, sessionId],
-  )
+  const commitTerminalGeometry = useCommittedTerminalGeometry({
+    terminalRef,
+    fitAddonRef,
+    containerRef,
+    isPointerResizingRef,
+    lastCommittedPtySizeRef,
+    suppressPtyResizeRef,
+    latestSessionIdRef,
+    sessionId,
+    scheduleWebglCanvasTransformCleanup,
+  })
 
   const requestTerminalRendererRecovery = useCallback(
     ({ forceDom }: TerminalRendererRecoveryRequest) => {

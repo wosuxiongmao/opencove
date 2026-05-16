@@ -4,6 +4,7 @@ import { createRemotePtyStreamMessageHandler } from '../../../src/app/main/contr
 
 describe('createRemotePtyStreamMessageHandler', () => {
   function createHandler() {
+    const attachedSessions = new Map<string, { lastSeq: number }>()
     const sendToSessionSubscribers = vi.fn()
     const sendToAllWindows = vi.fn()
     const externalDataListener = vi.fn()
@@ -11,9 +12,10 @@ describe('createRemotePtyStreamMessageHandler', () => {
     const externalStateListener = vi.fn()
     const externalMetadataListener = vi.fn()
     const onSessionExit = vi.fn()
+    const onSessionAttached = vi.fn()
 
     const handler = createRemotePtyStreamMessageHandler({
-      attachedSessions: new Map(),
+      attachedSessions,
       sendToSessionSubscribers,
       sendToAllWindows,
       externalDataListeners: new Set([externalDataListener]),
@@ -22,6 +24,7 @@ describe('createRemotePtyStreamMessageHandler', () => {
       externalMetadataListeners: new Set([externalMetadataListener]),
       cancelMetadataWatcher: vi.fn(),
       onSessionExit,
+      onSessionAttached,
       handshake: {
         onHelloAck: vi.fn(),
         onHandshakeError: vi.fn(),
@@ -30,6 +33,7 @@ describe('createRemotePtyStreamMessageHandler', () => {
 
     return {
       handler,
+      attachedSessions,
       sendToSessionSubscribers,
       sendToAllWindows,
       externalDataListener,
@@ -37,8 +41,26 @@ describe('createRemotePtyStreamMessageHandler', () => {
       externalStateListener,
       externalMetadataListener,
       onSessionExit,
+      onSessionAttached,
     }
   }
+
+  it('does not advance replay cursor from attached acknowledgements', () => {
+    const { handler, attachedSessions, sendToSessionSubscribers } = createHandler()
+
+    handler(JSON.stringify({ type: 'attached', sessionId: 'session-1', seq: 7 }))
+
+    expect(attachedSessions.get('session-1')?.lastSeq).toBe(0)
+
+    handler(JSON.stringify({ type: 'data', sessionId: 'session-1', data: 'hello', seq: 7 }))
+
+    expect(attachedSessions.get('session-1')?.lastSeq).toBe(7)
+    expect(sendToSessionSubscribers).toHaveBeenCalledWith('session-1', IPC_CHANNELS.ptyData, {
+      sessionId: 'session-1',
+      data: 'hello',
+      seq: 7,
+    })
+  })
 
   it('keeps terminal data scoped to attached session subscribers', () => {
     const { handler, sendToSessionSubscribers, sendToAllWindows, externalDataListener } =

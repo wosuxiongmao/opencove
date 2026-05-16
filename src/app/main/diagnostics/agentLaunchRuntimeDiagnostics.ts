@@ -69,6 +69,7 @@ function summarizeArgs(
 ): string {
   const summary: string[] = []
   let previousFlag: string | null = null
+  let optionParsingTerminated = false
 
   for (const [index, arg] of args.entries()) {
     if (previousFlag && SENSITIVE_VALUE_ARG_FLAGS.has(previousFlag)) {
@@ -80,6 +81,23 @@ function summarizeArgs(
     if (previousFlag && VALUE_ARG_FLAGS.has(previousFlag)) {
       summary.push(truncate(arg, 80))
       previousFlag = null
+      continue
+    }
+
+    if (arg === '--') {
+      summary.push(arg)
+      previousFlag = null
+      optionParsingTerminated = true
+      continue
+    }
+
+    if (optionParsingTerminated) {
+      if (provider === 'codex' && mode === 'new') {
+        summary.push(`<redacted:codex-prompt:index=${index}:len=${arg.length}>`)
+        continue
+      }
+
+      summary.push(`<arg:index=${index}:len=${arg.length}>`)
       continue
     }
 

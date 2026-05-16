@@ -69,14 +69,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   environmentVariables,
   onRequestPersistFlush,
   terminalDisplayMetrics,
-}: UseAgentNodeLifecycleParams): {
-  buildAgentNodeTitle: (provider: AgentNodeData['provider'], label: string | null) => string
-  launchAgentInNode: (nodeId: string, mode: 'new' | 'resume') => Promise<void>
-  reloadAgentNode: (nodeId: string) => Promise<void>
-  listAgentSessionsForNode: (nodeId: string, limit?: number) => Promise<AgentSessionSummary[]>
-  switchAgentNodeSession: (nodeId: string, summary: AgentSessionSummary) => Promise<void>
-  stopAgentNode: (nodeId: string) => Promise<void>
-} {
+}: UseAgentNodeLifecycleParams) {
   const { t } = useTranslation()
 
   const buildAgentNodeTitle = useCallback(
@@ -357,6 +350,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       agentExecutablePathOverrideByProvider,
       agentFullAccess,
       defaultTerminalProfileId,
+      terminalDisplayMetrics,
       terminalFontSize,
     ],
   )

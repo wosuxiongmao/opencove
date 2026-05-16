@@ -9,11 +9,14 @@ import type { AgentLaunchMode, WorkspaceNodeKind } from '../../types'
 import type { AttachablePtyApi } from './attachablePty'
 import { createOpenCodeTuiThemeBridge } from './opencodeTuiThemeBridge'
 import { containsMeaningfulTerminalDisplayContent } from './hydrationReplacement'
+import { attachAfterPresentationSnapshot } from './presentationSnapshotReplayCursor'
 import type { TerminalThemeMode } from './theme'
 import { registerRuntimeTerminalRendererHealth } from './runtimeRendererHealth'
 import type { TerminalRendererRecoveryRequest } from './runtimeRendererHealth'
 import type { TerminalRendererKind } from './useWebglCanvasTransformCleanupScheduler'
 import type { XtermSession } from './xtermSession'
+
+export { attachAfterPresentationSnapshot } from './presentationSnapshotReplayCursor'
 
 export type TerminalHydrationBaselineSource =
   | 'empty'
@@ -34,15 +37,23 @@ export function shouldGateRestoredAgentInput(options: {
   return options.kind === 'agent'
 }
 
+function isRestoredAgentRuntime(options: {
+  kind: WorkspaceNodeKind
+  agentResumeSessionIdVerified: boolean
+  agentLaunchMode: AgentLaunchMode | null
+}): boolean {
+  return (
+    options.kind === 'agent' &&
+    (options.agentResumeSessionIdVerified || options.agentLaunchMode === 'resume')
+  )
+}
+
 export function shouldAwaitRestoredAgentVisibleOutput(options: {
   kind: WorkspaceNodeKind
   agentResumeSessionIdVerified: boolean
   agentLaunchMode: AgentLaunchMode | null
 }): boolean {
-  void options.agentResumeSessionIdVerified
-  void options.agentLaunchMode
-
-  return options.kind === 'agent'
+  return isRestoredAgentRuntime(options)
 }
 
 export function shouldRequirePostGeometrySnapshotOutput(options: {
@@ -51,10 +62,7 @@ export function shouldRequirePostGeometrySnapshotOutput(options: {
   agentResumeSessionIdVerified: boolean
   agentLaunchMode: AgentLaunchMode | null
 }): boolean {
-  void options.agentResumeSessionIdVerified
-  void options.agentLaunchMode
-
-  return options.kind === 'agent' && !options.isLiveSessionReattach
+  return isRestoredAgentRuntime(options) && !options.isLiveSessionReattach
 }
 
 export function shouldProtectRestoredAgentHistory(options: {
@@ -358,19 +366,6 @@ export async function requestPresentationSnapshotAfterGeometry({
   }
 
   return attemptRequest(0, null)
-}
-
-export function attachAfterPresentationSnapshot(options: {
-  ptyApi: AttachablePtyApi
-  sessionId: string
-  presentationSnapshotPromise: Promise<PresentationSnapshotTerminalResult | null>
-}): Promise<void | undefined> {
-  return options.presentationSnapshotPromise.then(async snapshot => {
-    return await options.ptyApi.attach?.({
-      sessionId: options.sessionId,
-      ...(snapshot ? { afterSeq: snapshot.appliedSeq } : {}),
-    })
-  })
 }
 
 export function prepareRuntimePresentationAttach(options: {

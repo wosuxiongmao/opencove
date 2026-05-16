@@ -429,8 +429,6 @@ export function createRemotePtyRuntime(options: {
       })
       const snapshot = parsePresentationSnapshot(sessionId, value)
 
-      sessionCoordinator.updateAttachedSeq(sessionId, snapshot.appliedSeq)
-
       return snapshot
     },
     debugCrashHost: async () => {

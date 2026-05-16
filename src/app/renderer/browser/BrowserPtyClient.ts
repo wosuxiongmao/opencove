@@ -170,13 +170,8 @@ export class BrowserPtyClient {
     }
 
     if (type === 'attached') {
-      const seq =
-        typeof record.seq === 'number' && Number.isFinite(record.seq) ? Math.floor(record.seq) : 0
-      const existing = this.attachedSessions.get(sessionId)
-      if (existing) {
-        existing.lastSeq = Math.max(existing.lastSeq, seq)
-      } else {
-        this.attachedSessions.set(sessionId, { lastSeq: seq })
+      if (!this.attachedSessions.has(sessionId)) {
+        this.attachedSessions.set(sessionId, { lastSeq: 0 })
       }
       return
     }

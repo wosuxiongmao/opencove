@@ -121,12 +121,8 @@ export function createRemotePtyStreamMessageHandler(options: {
     }
 
     if (message.type === 'attached') {
-      const seq = normalizeOptionalFiniteInt(message.seq) ?? 0
-      const existing = options.attachedSessions.get(sessionId)
-      if (existing) {
-        existing.lastSeq = Math.max(existing.lastSeq, seq)
-      } else {
-        options.attachedSessions.set(sessionId, { lastSeq: seq })
+      if (!options.attachedSessions.has(sessionId)) {
+        options.attachedSessions.set(sessionId, { lastSeq: 0 })
       }
       options.onSessionAttached(sessionId)
       return

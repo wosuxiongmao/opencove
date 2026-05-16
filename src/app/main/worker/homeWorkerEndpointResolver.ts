@@ -20,6 +20,21 @@ function toEndpoint(value: {
   }
 }
 
+const LOCAL_ENDPOINT_HEALTH_CHECK_TTL_MS = 5_000
+
+function areEndpointsEqual(
+  left: ControlSurfaceRemoteEndpoint | null,
+  right: ControlSurfaceRemoteEndpoint | null,
+): boolean {
+  return (
+    !!left &&
+    !!right &&
+    left.hostname === right.hostname &&
+    left.port === right.port &&
+    left.token === right.token
+  )
+}
+
 async function resolveLocalWorkerEndpoint(
   userDataPath: string,
 ): Promise<ControlSurfaceRemoteEndpoint | null> {
@@ -43,6 +58,8 @@ export function createHomeWorkerEndpointResolver(options: {
   initialEndpoint?: ControlSurfaceRemoteEndpoint | null
   isLocalEndpointAlive?: (endpoint: ControlSurfaceRemoteEndpoint) => Promise<boolean>
   recoverLocalEndpoint?: () => Promise<ControlSurfaceRemoteEndpoint | null>
+  localEndpointHealthCheckTtlMs?: number
+  now?: () => number
 }): ControlSurfaceRemoteEndpointResolver {
   if (options.effectiveMode === 'remote') {
     const endpoint =
@@ -52,18 +69,43 @@ export function createHomeWorkerEndpointResolver(options: {
 
   if (options.effectiveMode === 'local') {
     let cachedEndpoint = options.initialEndpoint ?? null
+    let lastHealthyEndpoint: ControlSurfaceRemoteEndpoint | null = null
+    let lastHealthCheckAtMs = 0
     const isLocalEndpointAlive = options.isLocalEndpointAlive ?? isWorkerConnectionAlive
     const recoverLocalEndpoint = options.recoverLocalEndpoint ?? recoverLocalWorkerEndpoint
+    const localEndpointHealthCheckTtlMs = Math.max(
+      0,
+      options.localEndpointHealthCheckTtlMs ?? LOCAL_ENDPOINT_HEALTH_CHECK_TTL_MS,
+    )
+    const now = options.now ?? (() => Date.now())
 
     return async () => {
       const resolved = await resolveLocalWorkerEndpoint(options.userDataPath)
       const candidateEndpoint = resolved ?? cachedEndpoint
-      if (candidateEndpoint && (await isLocalEndpointAlive(candidateEndpoint))) {
+      const checkedAtMs = now()
+      if (
+        candidateEndpoint &&
+        areEndpointsEqual(candidateEndpoint, lastHealthyEndpoint) &&
+        checkedAtMs - lastHealthCheckAtMs < localEndpointHealthCheckTtlMs
+      ) {
         cachedEndpoint = candidateEndpoint
         return candidateEndpoint
       }
 
+      if (candidateEndpoint && (await isLocalEndpointAlive(candidateEndpoint))) {
+        cachedEndpoint = candidateEndpoint
+        lastHealthyEndpoint = candidateEndpoint
+        lastHealthCheckAtMs = checkedAtMs
+        return candidateEndpoint
+      }
+
+      lastHealthyEndpoint = null
+      lastHealthCheckAtMs = 0
       cachedEndpoint = await recoverLocalEndpoint()
+      if (cachedEndpoint) {
+        lastHealthyEndpoint = cachedEndpoint
+        lastHealthCheckAtMs = now()
+      }
       return cachedEndpoint
     }
   }

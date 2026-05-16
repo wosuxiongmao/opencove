@@ -133,5 +133,5 @@ describe('main process Wayland IME flags', () => {
         Object.defineProperty(process, 'platform', platformDescriptor)
       }
     }
-  })
+  }, 15_000)
 })

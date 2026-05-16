@@ -163,12 +163,8 @@ export class RemotePtyEndpointProxy {
     }
 
     if (type === 'attached') {
-      const seq = normalizeOptionalFiniteInt(parsed.seq) ?? 0
-      const existing = this.attachedSessions.get(sessionId)
-      if (existing) {
-        existing.lastSeq = Math.max(existing.lastSeq, seq)
-      } else {
-        this.attachedSessions.set(sessionId, { lastSeq: seq })
+      if (!this.attachedSessions.has(sessionId)) {
+        this.attachedSessions.set(sessionId, { lastSeq: 0 })
       }
       return
     }

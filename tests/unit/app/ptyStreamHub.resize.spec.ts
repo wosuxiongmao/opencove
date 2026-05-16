@@ -17,6 +17,115 @@ function createOpenWebSocketMock() {
 }
 
 describe('PtyStreamHub resize', () => {
+  it('replays worker-owned PTY output when a client attaches from an older seq', () => {
+    const hub = new PtyStreamHub({
+      replayWindowMaxBytes: 64_000,
+      ptyRuntime: {
+        spawnSession: vi.fn(),
+        write: vi.fn(),
+        resize: vi.fn(),
+        kill: vi.fn(),
+        onData: vi.fn(() => () => undefined),
+        onExit: vi.fn(() => () => undefined),
+      },
+    })
+    const { ws, sent } = createOpenWebSocketMock()
+
+    hub.registerClient({ clientId: 'client-1', kind: 'desktop', ws })
+    hub.registerSessionMetadata({
+      sessionId: 'session-1',
+      kind: 'agent',
+      startedAt: '2026-04-29T00:00:00.000Z',
+      cwd: '/tmp',
+      command: 'codex',
+      args: [],
+      cols: 64,
+      rows: 44,
+    })
+
+    hub.handlePtyData('session-1', 'Ready.\r\n')
+    hub.attach({ clientId: 'client-1', sessionId: 'session-1', afterSeq: 0 })
+
+    expect(sent).toContainEqual({
+      type: 'data',
+      sessionId: 'session-1',
+      seq: 1,
+      data: 'Ready.\r\n',
+    })
+
+    sent.length = 0
+    hub.attach({ clientId: 'client-1', sessionId: 'session-1', afterSeq: 1 })
+
+    expect(sent.some(message => (message as { type?: string }).type === 'data')).toBe(false)
+  })
+
+  it('keeps a worker-owned presentation snapshot for output received without subscribers', async () => {
+    const hub = new PtyStreamHub({
+      replayWindowMaxBytes: 64_000,
+      ptyRuntime: {
+        spawnSession: vi.fn(),
+        write: vi.fn(),
+        resize: vi.fn(),
+        kill: vi.fn(),
+        onData: vi.fn(() => () => undefined),
+        onExit: vi.fn(() => () => undefined),
+      },
+    })
+
+    hub.registerSessionMetadata({
+      sessionId: 'session-1',
+      kind: 'agent',
+      startedAt: '2026-04-29T00:00:00.000Z',
+      cwd: '/tmp',
+      command: 'codex',
+      args: [],
+      cols: 64,
+      rows: 44,
+    })
+
+    hub.handlePtyData('session-1', 'Ready.\r\n')
+
+    const snapshot = await hub.presentationSnapshotSession('session-1')
+
+    expect(snapshot.appliedSeq).toBe(1)
+    expect(snapshot.serializedScreen).toContain('Ready.')
+    expect(snapshot.cols).toBe(64)
+    expect(snapshot.rows).toBe(44)
+  })
+
+  it('preserves worker-owned output when metadata geometry arrives after PTY data', async () => {
+    const hub = new PtyStreamHub({
+      replayWindowMaxBytes: 64_000,
+      ptyRuntime: {
+        spawnSession: vi.fn(),
+        write: vi.fn(),
+        resize: vi.fn(),
+        kill: vi.fn(),
+        onData: vi.fn(() => () => undefined),
+        onExit: vi.fn(() => () => undefined),
+      },
+    })
+
+    hub.handlePtyData('session-1', 'Ready.\r\n')
+    hub.registerSessionMetadata({
+      sessionId: 'session-1',
+      kind: 'agent',
+      startedAt: '2026-04-29T00:00:00.000Z',
+      cwd: '/tmp',
+      command: 'codex',
+      args: [],
+      cols: 64,
+      rows: 44,
+    })
+
+    const snapshot = await hub.presentationSnapshotSession('session-1')
+
+    expect(snapshot.appliedSeq).toBe(1)
+    expect(snapshot.serializedScreen).toContain('Ready.')
+    expect(snapshot.cols).toBe(64)
+    expect(snapshot.rows).toBe(44)
+  })
+
   it('does not forward unchanged canonical geometry to the PTY runtime', () => {
     const runtimeResize = vi.fn()
     const hub = new PtyStreamHub({
